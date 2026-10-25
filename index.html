@@ -79,7 +79,8 @@
 
   .onglet { display: none; }
   .onglet.visible { display: block; }
-  #graph { width: 100%; height: 320px; }
+  #graph1, #graph2 { width: 100%; height: 300px; }
+  .titre-graphique { font-size: 13px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
 
   #connexion .carte { border-radius: 16px; }
 </style>
@@ -164,16 +165,40 @@
 
     <!-- Onglet 2 : Graphique -->
     <section id="graphique" class="onglet">
+
+      <!-- Graphique principal : poids quotidien -->
       <div class="carte">
+        <div class="titre-graphique">Poids quotidien</div>
+        <label>Période
+          <select id="periode1">
+            <option value="5j">5 derniers jours</option>
+            <option value="1m">1 mois</option>
+            <option value="6m">6 mois</option>
+            <option value="1a">1 an</option>
+            <option value="tout" selected>Tout</option>
+          </select>
+        </label>
+        <div id="graph1"></div>
+        <div id="resume1" class="message"></div>
+      </div>
+
+      <!-- Graphique secondaire : au choix -->
+      <div class="carte">
+        <div class="titre-graphique">Graphique secondaire</div>
         <div class="ligne-deux">
-          <label>Type
-            <select id="type">
-              <option value="poids">Poids quotidien</option>
-              <option value="semaine">Moyenne par semaine</option>
+          <label>Affichage
+            <select id="type2">
+              <option value="semaine">Poids : moyenne par semaine</option>
+              <option value="bras">Tour de bras</option>
+              <option value="cuisse">Tour de cuisse</option>
+              <option value="hanche">Tour de hanche</option>
+              <option value="taille">Tour de taille</option>
+              <option value="poitrine">Tour de poitrine</option>
+              <option value="epaules">Tour d'épaules</option>
             </select>
           </label>
           <label>Période
-            <select id="periode">
+            <select id="periode2">
               <option value="5j">5 derniers jours</option>
               <option value="1m">1 mois</option>
               <option value="6m">6 mois</option>
@@ -182,8 +207,8 @@
             </select>
           </label>
         </div>
-        <div id="graph"></div>
-        <div id="resume" class="message"></div>
+        <div id="graph2"></div>
+        <div id="resume2" class="message"></div>
       </div>
     </section>
 
@@ -231,7 +256,7 @@
   google.charts.load('current', { packages: ['corechart'] });
   google.charts.setOnLoadCallback(() => {
     googleChargé = true;
-    if (ongletActif === 'graphique') dessiner();
+    if (ongletActif === 'graphique') dessinerTout();
   });
 
   // ---------- Utilitaires ----------
@@ -302,7 +327,7 @@
     return html + '</table>';
   }
 
-  // Texte affiché au survol d'un point du graphique
+  // Texte affiché au survol d'un point du graphique principal
   function infoBulle(p) {
     let t = formaterDate(p.date) + '\nPoids : ' + fr(p.poids) + ' kg';
     if (p.note) t += '\nNote : ' + p.note;
@@ -374,7 +399,7 @@
       bouton.classList.add('actif');
       document.getElementById(bouton.dataset.onglet).classList.add('visible');
       ongletActif = bouton.dataset.onglet;
-      if (ongletActif === 'graphique') dessiner();
+      if (ongletActif === 'graphique') dessinerTout();
     });
   });
 
@@ -402,7 +427,7 @@
 
     await chargerPhotos();
 
-    if (ongletActif === 'graphique') dessiner();
+    if (ongletActif === 'graphique') dessinerTout();
   }
 
   function afficherDernieres() {
@@ -585,9 +610,10 @@
     zone.innerHTML = html + '</table>';
   }
 
-  // ---------- Graphique ----------
-  function dansPeriode(dateStr) {
-    const p = document.getElementById('periode').value;
+  // ---------- Graphiques ----------
+  // Filtre par période, à partir du sélecteur indiqué (periode1 ou periode2)
+  function dansPeriode(dateStr, idSelect) {
+    const p = document.getElementById(idSelect).value;
     if (p === 'tout') return true;
     const jours = { '5j': 5, '1m': 30, '6m': 182, '1a': 365 }[p];
     const limite = new Date();
@@ -596,7 +622,7 @@
     return dateLocale(dateStr) >= limite;
   }
 
-  function optionsGraphique() {
+  function optionsGraphique(titreY) {
     return {
       backgroundColor: 'transparent',
       legend: 'none',
@@ -605,42 +631,64 @@
       pointSize: 5,
       titleTextStyle: { color: '#9aa0b4' },
       hAxis: { format: 'dd/MM', textStyle: { color: '#9aa0b4' }, gridlines: { color: '#2a2f3d' } },
-      vAxis: { textStyle: { color: '#9aa0b4' }, gridlines: { color: '#2a2f3d' }, baselineColor: '#2a2f3d' },
-      chartArea: { width: '85%', height: '75%' }
+      vAxis: { title: titreY, titleTextStyle: { color: '#9aa0b4' }, textStyle: { color: '#9aa0b4' }, gridlines: { color: '#2a2f3d' }, baselineColor: '#2a2f3d' },
+      chartArea: { width: '85%', height: '70%' }
     };
   }
 
-  function dessiner() {
+  function dessinerTout() {
+    dessinerPrincipal();
+    dessinerSecondaire();
+  }
+
+  // Graphique principal : poids quotidien
+  function dessinerPrincipal() {
     if (!googleChargé) return;
 
-    const type = document.getElementById('type').value;
-    const table = new google.visualization.DataTable();
-    const options = optionsGraphique();
-    let lignes = [];
-    let resume = '';
+    const zone = document.getElementById('graph1');
+    const resume = document.getElementById('resume1');
+    const triees = pesees
+      .filter(p => dansPeriode(p.date, 'periode1'))
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-    if (type === 'poids') {
-      const triees = pesees
-        .filter(p => dansPeriode(p.date))
-        .slice()
-        .sort((a, b) => a.date.localeCompare(b.date));
-      lignes = triees.map(p => [dateLocale(p.date), Number(p.poids), infoBulle(p)]);
-      table.addColumn('date', 'Date');
-      table.addColumn('number', 'Poids (kg)');
-      table.addColumn({ type: 'string', role: 'tooltip' });
-      options.vAxis.title = 'kg';
-      if (triees.length) {
-        const premier = Number(triees[0].poids);
-        const dernier = Number(triees[triees.length - 1].poids);
-        const diff = dernier - premier;
-        resume = 'Départ : ' + fr(premier) + ' kg · Actuel : ' + fr(dernier) + ' kg · Variation : '
-          + (diff > 0 ? '+' : '') + fr(diff) + ' kg';
-      }
+    if (!triees.length) {
+      zone.textContent = 'Pas de pesée sur cette période.';
+      zone.style.color = '#9aa0b4';
+      resume.textContent = '';
+      return;
     }
 
-    if (type === 'semaine') {
+    const table = new google.visualization.DataTable();
+    table.addColumn('date', 'Date');
+    table.addColumn('number', 'Poids (kg)');
+    table.addColumn({ type: 'string', role: 'tooltip' });
+    table.addRows(triees.map(p => [dateLocale(p.date), Number(p.poids), infoBulle(p)]));
+
+    zone.textContent = '';
+    new google.visualization.LineChart(zone).draw(table, optionsGraphique('kg'));
+
+    const premier = Number(triees[0].poids);
+    const dernier = Number(triees[triees.length - 1].poids);
+    const diff = dernier - premier;
+    resume.textContent = 'Départ : ' + fr(premier) + ' kg · Actuel : ' + fr(dernier) + ' kg · Variation : '
+      + (diff > 0 ? '+' : '') + fr(diff) + ' kg';
+  }
+
+  // Graphique secondaire : moyenne par semaine ou une mesure corporelle
+  function dessinerSecondaire() {
+    if (!googleChargé) return;
+
+    const choix = document.getElementById('type2').value;
+    const zone = document.getElementById('graph2');
+    const resume = document.getElementById('resume2');
+    const table = new google.visualization.DataTable();
+    let lignes = [];
+    let titreY = '';
+
+    if (choix === 'semaine') {
       const groupes = {};
-      pesees.filter(p => dansPeriode(p.date)).forEach(p => {
+      pesees.filter(p => dansPeriode(p.date, 'periode2')).forEach(p => {
         const cle = versIso(lundiDe(dateLocale(p.date)));
         (groupes[cle] = groupes[cle] || []).push(Number(p.poids));
       });
@@ -650,25 +698,40 @@
       });
       table.addColumn('date', 'Semaine du');
       table.addColumn('number', 'Poids moyen (kg)');
-      options.vAxis.title = 'kg';
+      titreY = 'kg';
+    } else {
+      const nom = NOMS_MESURES[choix];
+      lignes = mesures
+        .filter(m => m[choix] !== null && dansPeriode(m.date, 'periode2'))
+        .slice()
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(m => [dateLocale(m.date), Number(m[choix])]);
+      table.addColumn('date', 'Date');
+      table.addColumn('number', nom + ' (cm)');
+      titreY = 'cm';
     }
 
     if (!lignes.length) {
-      document.getElementById('graph').textContent = 'Pas de données sur cette période.';
-      document.getElementById('graph').style.color = '#9aa0b4';
-      document.getElementById('resume').textContent = '';
+      zone.textContent = 'Pas de données sur cette période.';
+      zone.style.color = '#9aa0b4';
+      resume.textContent = '';
       return;
     }
 
-    document.getElementById('graph').textContent = '';
     table.addRows(lignes);
-    const chart = new google.visualization.LineChart(document.getElementById('graph'));
-    chart.draw(table, options);
-    document.getElementById('resume').textContent = resume;
+    zone.textContent = '';
+    new google.visualization.LineChart(zone).draw(table, optionsGraphique(titreY));
+
+    const premier = lignes[0][1];
+    const dernier = lignes[lignes.length - 1][1];
+    const diff = dernier - premier;
+    resume.textContent = 'Départ : ' + fr(premier) + ' ' + titreY + ' · Actuel : ' + fr(dernier) + ' ' + titreY
+      + ' · Variation : ' + (diff > 0 ? '+' : '') + fr(diff) + ' ' + titreY;
   }
 
-  document.getElementById('type').addEventListener('change', dessiner);
-  document.getElementById('periode').addEventListener('change', dessiner);
+  document.getElementById('periode1').addEventListener('change', dessinerPrincipal);
+  document.getElementById('type2').addEventListener('change', dessinerSecondaire);
+  document.getElementById('periode2').addEventListener('change', dessinerSecondaire);
 
   demarrer();
 </script>
