@@ -117,15 +117,20 @@
   .case-photo.rempli { border-style: solid; border-color: var(--accent); }
   .case-titre { margin-top: 6px; font-size: 12px; color: var(--texte-doux); }
 
+  /* Historique des photos : un bloc par date, trois photos côte à côte */
+  .photos-liste { display: flex; flex-direction: column; gap: 18px; }
+  .photos-date { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
+  .photos-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .photos-vue { min-width: 0; text-align: center; }
+  .photos-vue img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; display: block; background: var(--fond); }
+  .photos-vue .vide-photo { width: 100%; aspect-ratio: 3 / 4; border: 1px dashed var(--bordure); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--texte-doux); font-size: 14px; }
+  .photos-vue .nom-vue { margin-top: 4px; font-size: 11px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: .5px; }
+
   .defile { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th, td { padding: 9px 8px; border-bottom: 1px solid var(--bordure); text-align: left; vertical-align: middle; }
   th { color: var(--texte-doux); font-weight: normal; font-size: 13px; }
   .tableau-mesures th, .tableau-mesures td { font-size: 13px; padding: 7px 6px; white-space: nowrap; }
-
-  .tableau-photos th, .tableau-photos td { text-align: center; padding: 8px 6px; }
-  .tableau-photos td:first-child { text-align: left; white-space: nowrap; }
-  .tableau-photos img { width: 92px; height: 122px; object-fit: cover; border-radius: 8px; display: block; margin: 0 auto; background: var(--fond); }
 
   /* Choix des dates pour la comparaison */
   .choix-liste { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -163,6 +168,7 @@
     .ligne-deux { flex-direction: column; }
     .grille-mesures { grid-template-columns: 1fr; }
     .jour .poids { font-size: 42px; }
+    .photos-vue .nom-vue { font-size: 10px; }
   }
 </style>
 </head>
@@ -338,7 +344,7 @@
       <!-- Historique des photos -->
       <div class="carte">
         <h3>Évolution en photos</h3>
-        <div id="tableauPhotos" class="defile">Chargement…</div>
+        <div id="tableauPhotos">Chargement…</div>
       </div>
     </section>
 
@@ -746,6 +752,8 @@
     if (!document.getElementById('panneauComparaison').hidden) renderChoixDates();
   }
 
+  // Affichage par date : une ligne de titre puis les trois vues côte à côte.
+  // Chaque photo occupe une colonne de largeur égale, donc rien ne dépasse de l'écran.
   async function afficherPhotos() {
     const zone = document.getElementById('tableauPhotos');
     if (!photosRows.length) {
@@ -767,20 +775,27 @@
       data.forEach(d => { if (d.signedUrl) urls[d.path] = d.signedUrl; });
     }
 
-    let html = '<table class="tableau-photos"><tr><th>Date</th>';
-    VUES_PHOTO.forEach(c => { html += '<th>' + NOMS_PHOTO[c] + '</th>'; });
-    html += '</tr>';
-
+    let html = '<div class="photos-liste">';
     photosRows.forEach(r => {
-      html += '<tr><td>' + formaterDate(r.date) + '</td>';
+      html += '<div>';
+      html += '<div class="photos-date">' + formaterDate(r.date) + '</div>';
+      html += '<div class="photos-grille">';
       VUES_PHOTO.forEach(c => {
         const url = r[c] ? urls[r[c]] : null;
-        html += '<td>' + (url ? '<a href="' + url + '" target="_blank"><img src="' + url + '" alt="' + NOMS_PHOTO[c] + '"></a>' : '—') + '</td>';
+        html += '<div class="photos-vue">';
+        if (url) {
+          html += '<a href="' + url + '" target="_blank"><img src="' + url + '" alt="' + NOMS_PHOTO[c] + ' du ' + formaterDate(r.date) + '"></a>';
+        } else {
+          html += '<div class="vide-photo">—</div>';
+        }
+        html += '<div class="nom-vue">' + NOMS_PHOTO[c] + '</div>';
+        html += '</div>';
       });
-      html += '</tr>';
+      html += '</div></div>';
     });
+    html += '</div>';
 
-    zone.innerHTML = html + '</table>';
+    zone.innerHTML = html;
   }
 
   // ---------- Comparaison de photos ----------
