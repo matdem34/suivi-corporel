@@ -30,7 +30,7 @@
   nav button { flex: 1; padding: 12px 4px; border: none; background: none; color: var(--texte-doux); font-size: 14px; cursor: pointer; }
   nav button.actif { color: var(--accent); border-bottom: 3px solid var(--accent); font-weight: bold; }
 
-  main { padding: 16px; max-width: 720px; margin: auto; }
+  main { padding: 16px; max-width: 960px; margin: auto; }
 
   .carte { background: var(--carte); border: 1px solid var(--bordure); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
   .carte h3 { margin: 0 0 12px 0; font-size: 16px; color: var(--texte); }
@@ -64,6 +64,17 @@
   .tableau-photos th, .tableau-photos td { text-align: center; padding: 8px 6px; }
   .tableau-photos td:first-child { text-align: left; white-space: nowrap; }
   .tableau-photos img { width: 92px; height: 122px; object-fit: cover; border-radius: 8px; display: block; margin: 0 auto; background: var(--fond); }
+
+  /* Choix des dates pour la comparaison */
+  .choix-liste { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .choix-date { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 12px; border: 1px solid var(--bordure); border-radius: 8px; color: var(--texte); cursor: pointer; }
+  .choix-date input { width: auto; margin: 0; }
+
+  /* Affichage côte à côte */
+  .comparaison { display: flex; gap: 10px; margin-top: 16px; overflow-x: auto; align-items: flex-start; }
+  .cmp-item { flex: 1 1 0; min-width: 130px; margin: 0; text-align: center; }
+  .cmp-item img { width: 100%; height: auto; max-height: 62vh; object-fit: contain; border-radius: 8px; background: var(--fond); display: block; }
+  .cmp-item figcaption { margin-top: 6px; font-size: 13px; color: var(--accent); }
 
   .hausse { color: var(--hausse); font-weight: bold; }
   .baisse { color: var(--baisse); font-weight: bold; }
@@ -214,6 +225,30 @@
 
     <!-- Onglet 3 : Photos -->
     <section id="photos" class="onglet">
+
+      <!-- Bouton de comparaison -->
+      <div class="carte">
+        <button type="button" id="ouvrirComparaison" class="principal" style="margin-top:0">Comparer des photos</button>
+      </div>
+
+      <!-- Panneau de comparaison (masqué par défaut) -->
+      <div id="panneauComparaison" class="carte" hidden>
+        <h3>Comparaison de photos</h3>
+        <label>Vue
+          <select id="vueComparaison">
+            <option value="face">Face</option>
+            <option value="profil">Profil</option>
+            <option value="dos">Dos</option>
+          </select>
+        </label>
+        <div class="section-titre">Choisissez entre 2 et 5 dates</div>
+        <div id="choixDates"></div>
+        <button type="button" id="afficherComparaison" class="principal">Afficher la comparaison</button>
+        <div id="messageComparaison" class="message"></div>
+        <div id="comparaison" class="comparaison"></div>
+      </div>
+
+      <!-- Historique des photos -->
       <div class="carte">
         <h3>Évolution en photos</h3>
         <div id="tableauPhotos" class="defile">Chargement…</div>
@@ -245,6 +280,8 @@
   const VUES_PHOTO = ['face', 'profil', 'dos'];
   const NOMS_PHOTO = { face: 'Face', profil: 'Profil', dos: 'Dos' };
   const CHAMPS_PHOTO = { face: 'photoFace', profil: 'photoProfil', dos: 'photoDos' };
+  const MAX_COMPARAISON = 5;
+  const MIN_COMPARAISON = 2;
 
   let userId = null;
   let pesees = [];
@@ -571,6 +608,8 @@
     }
     photosRows = data;
     await afficherPhotos();
+    // Si le panneau de comparaison est ouvert, on met à jour la liste des dates disponibles
+    if (!document.getElementById('panneauComparaison').hidden) renderChoixDates();
   }
 
   async function afficherPhotos() {
@@ -609,6 +648,75 @@
 
     zone.innerHTML = html + '</table>';
   }
+
+  // ---------- Comparaison de photos ----------
+  document.getElementById('ouvrirComparaison').addEventListener('click', () => {
+    const panneau = document.getElementById('panneauComparaison');
+    panneau.hidden = !panneau.hidden;
+    if (!panneau.hidden) renderChoixDates();
+  });
+
+  document.getElementById('vueComparaison').addEventListener('change', () => {
+    renderChoixDates();
+    document.getElementById('comparaison').innerHTML = '';
+    document.getElementById('messageComparaison').textContent = '';
+  });
+
+  // Liste des dates disponibles pour la vue choisie
+  function renderChoixDates() {
+    const vue = document.getElementById('vueComparaison').value;
+    const zone = document.getElementById('choixDates');
+    const disponibles = photosRows.filter(r => r[vue]);
+
+    if (!disponibles.length) {
+      zone.textContent = 'Aucune photo de cette vue pour le moment.';
+      return;
+    }
+
+    zone.innerHTML = '<div class="choix-liste">' + disponibles.map(r =>
+      '<label class="choix-date"><input type="checkbox" value="' + escapeHtml(r[vue])
+      + '" data-date="' + r.date + '"> ' + formaterDate(r.date) + '</label>'
+    ).join('') + '</div>';
+  }
+
+  // Limite la sélection à 5 dates
+  document.getElementById('choixDates').addEventListener('change', () => {
+    const nbCochees = document.querySelectorAll('#choixDates input:checked').length;
+    document.querySelectorAll('#choixDates input').forEach(c => {
+      c.disabled = nbCochees >= MAX_COMPARAISON && !c.checked;
+    });
+  });
+
+  document.getElementById('afficherComparaison').addEventListener('click', async () => {
+    const vue = document.getElementById('vueComparaison').value;
+    const message = document.getElementById('messageComparaison');
+    const zone = document.getElementById('comparaison');
+    const cochees = Array.from(document.querySelectorAll('#choixDates input:checked'))
+      .map(c => ({ chemin: c.value, date: c.dataset.date }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (cochees.length < MIN_COMPARAISON) {
+      message.textContent = 'Sélectionnez au moins ' + MIN_COMPARAISON + ' dates.';
+      zone.innerHTML = '';
+      return;
+    }
+
+    message.textContent = 'Chargement…';
+    const { data, error } = await sb.storage.from('photos').createSignedUrls(cochees.map(c => c.chemin), 3600);
+    if (error) {
+      message.textContent = 'Erreur : ' + error.message;
+      return;
+    }
+
+    const urls = {};
+    data.forEach(d => { if (d.signedUrl) urls[d.path] = d.signedUrl; });
+
+    message.textContent = '';
+    zone.innerHTML = cochees.map(c =>
+      '<figure class="cmp-item"><img src="' + (urls[c.chemin] || '') + '" alt="' + NOMS_PHOTO[vue] + ' ' + formaterDate(c.date) + '">'
+      + '<figcaption>' + formaterDate(c.date) + '</figcaption></figure>'
+    ).join('');
+  });
 
   // ---------- Graphiques ----------
   // Filtre par période, à partir du sélecteur indiqué (periode1 ou periode2)
