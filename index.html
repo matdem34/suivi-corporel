@@ -37,7 +37,6 @@
 
   label { display: block; margin-top: 12px; font-size: 13px; color: var(--texte-doux); }
   input, select { width: 100%; padding: 11px; margin-top: 6px; font-size: 16px; border: 1px solid var(--bordure); border-radius: 8px; background: var(--fond); color: var(--texte); color-scheme: dark; }
-  input[type="file"] { font-size: 14px; padding: 8px; }
   input:focus, select:focus { outline: none; border-color: var(--accent); }
 
   button.principal { width: 100%; margin-top: 16px; padding: 13px; font-size: 16px; background: var(--accent-fort); color: white; border: none; border-radius: 8px; cursor: pointer; }
@@ -54,6 +53,18 @@
   .jour .poids span { font-size: 20px; color: var(--texte-doux); font-weight: normal; }
   .jour .note { font-size: 14px; color: var(--texte-doux); font-style: italic; }
   .jour .vide { font-size: 15px; color: var(--texte-doux); padding: 10px 0; }
+
+  /* Photos : trois cases alignées sur une ligne */
+  .photos-ligne { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
+  .case-wrap { text-align: center; }
+  .case-photo { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 3 / 4; margin: 0; border: 1px dashed var(--bordure); border-radius: 10px; background: var(--fond); cursor: pointer; overflow: hidden; }
+  .case-photo:hover { border-color: var(--accent); }
+  .case-photo input { display: none; }
+  .case-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+  .case-photo img.visible { display: block; }
+  .case-photo .plus { font-size: 28px; color: var(--texte-doux); }
+  .case-photo.rempli { border-style: solid; border-color: var(--accent); }
+  .case-titre { margin-top: 6px; font-size: 12px; color: var(--texte-doux); }
 
   .defile { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -158,9 +169,32 @@
           </div>
 
           <div class="section-titre">Photos</div>
-          <label>Photo de face <input type="file" id="photoFace" accept="image/*"></label>
-          <label>Photo de profil <input type="file" id="photoProfil" accept="image/*"></label>
-          <label>Photo de dos <input type="file" id="photoDos" accept="image/*"></label>
+          <div class="photos-ligne">
+            <div class="case-wrap">
+              <label class="case-photo" for="photoFace">
+                <img id="prevFace" alt="Aperçu face">
+                <span class="plus">+</span>
+                <input type="file" id="photoFace" accept="image/*">
+              </label>
+              <div class="case-titre">Face</div>
+            </div>
+            <div class="case-wrap">
+              <label class="case-photo" for="photoProfil">
+                <img id="prevProfil" alt="Aperçu profil">
+                <span class="plus">+</span>
+                <input type="file" id="photoProfil" accept="image/*">
+              </label>
+              <div class="case-titre">Profil</div>
+            </div>
+            <div class="case-wrap">
+              <label class="case-photo" for="photoDos">
+                <img id="prevDos" alt="Aperçu dos">
+                <span class="plus">+</span>
+                <input type="file" id="photoDos" accept="image/*">
+              </label>
+              <div class="case-titre">Dos</div>
+            </div>
+          </div>
 
           <button type="submit" class="principal">Enregistrer</button>
           <div id="messageMensure" class="message"></div>
@@ -280,6 +314,7 @@
   const VUES_PHOTO = ['face', 'profil', 'dos'];
   const NOMS_PHOTO = { face: 'Face', profil: 'Profil', dos: 'Dos' };
   const CHAMPS_PHOTO = { face: 'photoFace', profil: 'photoProfil', dos: 'photoDos' };
+  const APERCUS_PHOTO = { face: 'prevFace', profil: 'prevProfil', dos: 'prevDos' };
   const MAX_COMPARAISON = 5;
   const MIN_COMPARAISON = 2;
 
@@ -534,6 +569,28 @@
     }
   });
 
+  // ---------- Aperçu des photos choisies (cases cliquables) ----------
+  function afficherApercu(cle) {
+    const input = document.getElementById(CHAMPS_PHOTO[cle]);
+    const img = document.getElementById(APERCUS_PHOTO[cle]);
+    const caseEl = input.closest('.case-photo');
+    const fichier = input.files[0];
+
+    if (fichier) {
+      img.src = URL.createObjectURL(fichier);
+      img.classList.add('visible');
+      caseEl.classList.add('rempli');
+    } else {
+      img.removeAttribute('src');
+      img.classList.remove('visible');
+      caseEl.classList.remove('rempli');
+    }
+  }
+
+  VUES_PHOTO.forEach(cle => {
+    document.getElementById(CHAMPS_PHOTO[cle]).addEventListener('change', () => afficherApercu(cle));
+  });
+
   // ---------- Réduction des photos avant envoi ----------
   // Les photos du téléphone sont lourdes : on les réduit à 1200 px en JPEG pour économiser le stockage.
   async function compresser(fichier) {
@@ -592,7 +649,10 @@
 
       message.textContent = 'Enregistré.';
       MESURES.forEach(c => { document.getElementById('m_' + c).value = ''; });
-      Object.values(CHAMPS_PHOTO).forEach(idChamp => { document.getElementById(idChamp).value = ''; });
+      VUES_PHOTO.forEach(cle => {
+        document.getElementById(CHAMPS_PHOTO[cle]).value = '';
+        afficherApercu(cle);
+      });
       charger();
     } catch (err) {
       message.textContent = 'Erreur : ' + err.message;
