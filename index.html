@@ -195,6 +195,13 @@
     return html + '</table>';
   }
 
+  // Texte affiché au survol d'un point du graphique
+  function infoBulle(p) {
+    let t = formaterDate(p.date) + '\nPoids : ' + fr(p.poids) + ' kg';
+    if (p.note) t += '\nNote : ' + p.note;
+    return t;
+  }
+
   // ---------- Connexion ----------
   async function demarrer() {
     const { data } = await sb.auth.getSession();
@@ -356,17 +363,18 @@
     let resume = '';
 
     if (type === 'poids') {
-      lignes = pesees
+      const triees = pesees
         .filter(p => dansPeriode(p.date))
         .slice()
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .map(p => [dateLocale(p.date), Number(p.poids)]);
+        .sort((a, b) => a.date.localeCompare(b.date));
+      lignes = triees.map(p => [dateLocale(p.date), Number(p.poids), infoBulle(p)]);
       table.addColumn('date', 'Date');
       table.addColumn('number', 'Poids (kg)');
+      table.addColumn({ type: 'string', role: 'tooltip' });
       options.vAxis = { title: 'kg' };
-      if (lignes.length) {
-        const premier = lignes[0][1];
-        const dernier = lignes[lignes.length - 1][1];
+      if (triees.length) {
+        const premier = Number(triees[0].poids);
+        const dernier = Number(triees[triees.length - 1].poids);
         const diff = dernier - premier;
         resume = 'Départ : ' + fr(premier) + ' kg · Actuel : ' + fr(dernier) + ' kg · Variation : '
           + (diff > 0 ? '+' : '') + fr(diff) + ' kg';
