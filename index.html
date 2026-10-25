@@ -44,6 +44,7 @@
   button.principal:hover { background: var(--accent); }
 
   .message { margin-top: 10px; font-size: 14px; color: var(--texte-doux); }
+  .section-titre { margin: 18px 0 4px 0; font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
 
   /* Carte "pesée du jour" */
   .jour { text-align: center; padding: 22px 18px; background: linear-gradient(135deg, #1e2a52 0%, #181b26 70%); border-color: #2f3a6b; }
@@ -117,7 +118,7 @@
         <div id="aujourdhui"></div>
       </div>
 
-      <!-- Formulaire de pesée -->
+      <!-- 2. Enregistrer une pesée -->
       <div class="carte">
         <h3>Enregistrer une pesée</h3>
         <form id="formPesee">
@@ -129,11 +130,12 @@
         </form>
       </div>
 
-      <!-- 2. Mesures corporelles -->
+      <!-- 3. Mesures corporelles et photos -->
       <div class="carte">
-        <h3>Mesures corporelles</h3>
+        <h3>Mesures corporelles et photos</h3>
         <form id="formMensure">
           <label>Date <input type="date" id="dateMensure" required></label>
+
           <div class="grille-mesures">
             <label>Tour de bras (cm) <input type="number" id="m_bras" step="0.1" inputmode="decimal"></label>
             <label>Tour de cuisse (cm) <input type="number" id="m_cuisse" step="0.1" inputmode="decimal"></label>
@@ -142,28 +144,21 @@
             <label>Tour de poitrine (cm) <input type="number" id="m_poitrine" step="0.1" inputmode="decimal"></label>
             <label>Tour d'épaules (cm) <input type="number" id="m_epaules" step="0.1" inputmode="decimal"></label>
           </div>
-          <button type="submit" class="principal">Enregistrer les mesures</button>
+
+          <div class="section-titre">Photos</div>
+          <label>Photo de face <input type="file" id="photoFace" accept="image/*"></label>
+          <label>Photo de profil <input type="file" id="photoProfil" accept="image/*"></label>
+          <label>Photo de dos <input type="file" id="photoDos" accept="image/*"></label>
+
+          <button type="submit" class="principal">Enregistrer</button>
           <div id="messageMensure" class="message"></div>
         </form>
       </div>
 
-      <!-- 3. Dernières pesées -->
+      <!-- 4. Dernières pesées -->
       <div class="carte">
         <h3>Dernières pesées</h3>
         <div id="dernieres" class="defile">Chargement…</div>
-      </div>
-
-      <!-- 4. Photos de progression -->
-      <div class="carte">
-        <h3>Photos de progression</h3>
-        <form id="formPhotos">
-          <label>Date <input type="date" id="datePhotos" required></label>
-          <label>Photo de face <input type="file" id="photoFace" accept="image/*"></label>
-          <label>Photo de profil <input type="file" id="photoProfil" accept="image/*"></label>
-          <label>Photo de dos <input type="file" id="photoDos" accept="image/*"></label>
-          <button type="submit" class="principal">Enregistrer les photos</button>
-          <div id="messagePhotos" class="message"></div>
-        </form>
       </div>
     </section>
 
@@ -224,6 +219,7 @@
   const NOMS_MESURES = { bras: 'Bras', cuisse: 'Cuisse', hanche: 'Hanche', taille: 'Taille', poitrine: 'Poitrine', epaules: 'Épaules' };
   const VUES_PHOTO = ['face', 'profil', 'dos'];
   const NOMS_PHOTO = { face: 'Face', profil: 'Profil', dos: 'Dos' };
+  const CHAMPS_PHOTO = { face: 'photoFace', profil: 'photoProfil', dos: 'photoDos' };
 
   let userId = null;
   let pesees = [];
@@ -367,7 +363,6 @@
     const aujourdhui = versIso(new Date());
     document.getElementById('datePesee').value = aujourdhui;
     document.getElementById('dateMensure').value = aujourdhui;
-    document.getElementById('datePhotos').value = aujourdhui;
     charger();
   }
 
@@ -477,34 +472,8 @@
     }
   });
 
-  // ---------- Saisie des mesures corporelles ----------
-  document.getElementById('formMensure').addEventListener('submit', async e => {
-    e.preventDefault();
-    const message = document.getElementById('messageMensure');
-    message.textContent = 'Enregistrement…';
-
-    const ligne = {
-      user_id: userId,
-      date: document.getElementById('dateMensure').value
-    };
-    MESURES.forEach(c => {
-      const valeur = document.getElementById('m_' + c).value;
-      ligne[c] = valeur === '' ? null : parseFloat(valeur);
-    });
-
-    const { error } = await sb.from(TABLE_MESURES).upsert(ligne, { onConflict: 'user_id,date' });
-
-    if (error) {
-      message.textContent = 'Erreur : ' + error.message;
-    } else {
-      message.textContent = 'Mesures enregistrées.';
-      MESURES.forEach(c => { document.getElementById('m_' + c).value = ''; });
-      charger();
-    }
-  });
-
-  // ---------- Photos : réduction avant envoi ----------
-  // Les photos du téléphone sont lourdes : on les réduit à 1200 px et en JPEG pour économiser le stockage.
+  // ---------- Réduction des photos avant envoi ----------
+  // Les photos du téléphone sont lourdes : on les réduit à 1200 px en JPEG pour économiser le stockage.
   async function compresser(fichier) {
     const image = await createImageBitmap(fichier);
     const echelle = Math.min(1, 1200 / Math.max(image.width, image.height));
@@ -515,42 +484,54 @@
     return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
   }
 
-  // ---------- Saisie des photos ----------
-  document.getElementById('formPhotos').addEventListener('submit', async e => {
+  // ---------- Saisie des mesures et des photos (un seul bouton) ----------
+  document.getElementById('formMensure').addEventListener('submit', async e => {
     e.preventDefault();
-    const message = document.getElementById('messagePhotos');
-    const date = document.getElementById('datePhotos').value;
-    const champs = { face: 'photoFace', profil: 'photoProfil', dos: 'photoDos' };
+    const message = document.getElementById('messageMensure');
+    const date = document.getElementById('dateMensure').value;
+
     const ligne = { user_id: userId, date: date };
-    let envoyees = 0;
+    let mesuresRemplies = false;
+    MESURES.forEach(c => {
+      const valeur = document.getElementById('m_' + c).value;
+      ligne[c] = valeur === '' ? null : parseFloat(valeur);
+      if (valeur !== '') mesuresRemplies = true;
+    });
+
+    const fichiers = Object.entries(CHAMPS_PHOTO)
+      .filter(([cle, idChamp]) => document.getElementById(idChamp).files[0]);
+
+    if (!mesuresRemplies && !fichiers.length) {
+      message.textContent = 'Saisissez au moins une mesure ou une photo.';
+      return;
+    }
 
     try {
-      for (const [cle, idChamp] of Object.entries(champs)) {
-        const fichier = document.getElementById(idChamp).files[0];
-        if (!fichier) continue;
+      message.textContent = 'Enregistrement…';
 
-        message.textContent = 'Envoi de la photo ' + NOMS_PHOTO[cle].toLowerCase() + '…';
-        const blob = await compresser(fichier);
-        const chemin = userId + '/' + date + '/' + cle + '.jpg';
-
-        const { error } = await sb.storage.from('photos').upload(chemin, blob, { upsert: true, contentType: 'image/jpeg' });
+      if (mesuresRemplies) {
+        const { error } = await sb.from(TABLE_MESURES).upsert(ligne, { onConflict: 'user_id,date' });
         if (error) throw error;
-
-        ligne[cle] = chemin;
-        envoyees++;
       }
 
-      if (!envoyees) {
-        message.textContent = 'Choisissez au moins une photo.';
-        return;
+      if (fichiers.length) {
+        const photoLigne = { user_id: userId, date: date };
+        for (const [cle, idChamp] of fichiers) {
+          message.textContent = 'Envoi de la photo ' + NOMS_PHOTO[cle].toLowerCase() + '…';
+          const blob = await compresser(document.getElementById(idChamp).files[0]);
+          const chemin = userId + '/' + date + '/' + cle + '.jpg';
+          const { error } = await sb.storage.from('photos').upload(chemin, blob, { upsert: true, contentType: 'image/jpeg' });
+          if (error) throw error;
+          photoLigne[cle] = chemin;
+        }
+        const { error } = await sb.from('photos_progression').upsert(photoLigne, { onConflict: 'user_id,date' });
+        if (error) throw error;
       }
 
-      const { error } = await sb.from('photos_progression').upsert(ligne, { onConflict: 'user_id,date' });
-      if (error) throw error;
-
-      message.textContent = envoyees + ' photo(s) enregistrée(s).';
-      Object.values(champs).forEach(idChamp => { document.getElementById(idChamp).value = ''; });
-      chargerPhotos();
+      message.textContent = 'Enregistré.';
+      MESURES.forEach(c => { document.getElementById('m_' + c).value = ''; });
+      Object.values(CHAMPS_PHOTO).forEach(idChamp => { document.getElementById(idChamp).value = ''; });
+      charger();
     } catch (err) {
       message.textContent = 'Erreur : ' + err.message;
     }
