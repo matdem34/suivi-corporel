@@ -25,6 +25,8 @@
   .defile { overflow-x: auto; }
   .tableau-mesures th, .tableau-mesures td { font-size: 13px; padding: 6px; white-space: nowrap; }
   .message { margin-top: 10px; font-size: 14px; }
+  .indicateur { margin-bottom: 12px; padding: 10px; border-radius: 6px; font-size: 14px; background: #e6f4ea; color: #1e6b33; border: 1px solid #b7dfc2; }
+  .indicateur[hidden] { display: none; }
   .onglet { display: none; }
   .onglet.visible { display: block; }
   #graph { width: 100%; height: 320px; }
@@ -67,6 +69,7 @@
     <section id="saisie" class="onglet visible">
       <div class="carte">
         <h3>Pesée du jour</h3>
+        <div id="indicateur" class="indicateur" hidden></div>
         <form id="formPesee">
           <label>Date <input type="date" id="datePesee" required></label>
           <label>Poids (kg) <input type="number" id="poids" step="0.1" inputmode="decimal" required></label>
@@ -234,6 +237,22 @@
     return t;
   }
 
+  // ---------- Indicateur de pesée déjà faite ----------
+  function majIndicateur() {
+    const indicateur = document.getElementById('indicateur');
+    const dateChoisie = document.getElementById('datePesee').value;
+    const existante = pesees.find(p => p.date === dateChoisie);
+    if (existante) {
+      indicateur.textContent = '✔ Pesée déjà enregistrée pour cette date : ' + fr(existante.poids) + ' kg';
+      indicateur.hidden = false;
+    } else {
+      indicateur.textContent = '';
+      indicateur.hidden = true;
+    }
+  }
+
+  document.getElementById('datePesee').addEventListener('change', majIndicateur);
+
   // ---------- Connexion ----------
   async function demarrer() {
     const { data } = await sb.auth.getSession();
@@ -296,6 +315,7 @@
       pesees = resPesees.data;
       afficherDernieres();
       afficherHistoriquePesees();
+      majIndicateur();
     }
 
     const resMesures = await sb.from(TABLE_MESURES).select('*').order('date', { ascending: false });
