@@ -27,7 +27,7 @@
   header button { background: var(--carte-claire); color: var(--texte); border: 1px solid var(--bordure); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
 
   nav { display: flex; background: var(--carte); border-bottom: 1px solid var(--bordure); }
-  nav button { flex: 1; padding: 12px; border: none; background: none; color: var(--texte-doux); font-size: 15px; cursor: pointer; }
+  nav button { flex: 1; padding: 12px 4px; border: none; background: none; color: var(--texte-doux); font-size: 14px; cursor: pointer; }
   nav button.actif { color: var(--accent); border-bottom: 3px solid var(--accent); font-weight: bold; }
 
   main { padding: 16px; max-width: 720px; margin: auto; }
@@ -37,6 +37,7 @@
 
   label { display: block; margin-top: 12px; font-size: 13px; color: var(--texte-doux); }
   input, select { width: 100%; padding: 11px; margin-top: 6px; font-size: 16px; border: 1px solid var(--bordure); border-radius: 8px; background: var(--fond); color: var(--texte); color-scheme: dark; }
+  input[type="file"] { font-size: 14px; padding: 8px; }
   input:focus, select:focus { outline: none; border-color: var(--accent); }
 
   button.principal { width: 100%; margin-top: 16px; padding: 13px; font-size: 16px; background: var(--accent-fort); color: white; border: none; border-radius: 8px; cursor: pointer; }
@@ -55,9 +56,13 @@
 
   .defile { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { padding: 9px 8px; border-bottom: 1px solid var(--bordure); text-align: left; vertical-align: top; }
+  th, td { padding: 9px 8px; border-bottom: 1px solid var(--bordure); text-align: left; vertical-align: middle; }
   th { color: var(--texte-doux); font-weight: normal; font-size: 13px; }
   .tableau-mesures th, .tableau-mesures td { font-size: 13px; padding: 7px 6px; white-space: nowrap; }
+
+  .tableau-photos th, .tableau-photos td { text-align: center; padding: 8px 6px; }
+  .tableau-photos td:first-child { text-align: left; white-space: nowrap; }
+  .tableau-photos img { width: 92px; height: 122px; object-fit: cover; border-radius: 8px; display: block; margin: 0 auto; background: var(--fond); }
 
   .hausse { color: var(--hausse); font-weight: bold; }
   .baisse { color: var(--baisse); font-weight: bold; }
@@ -98,6 +103,7 @@
   <nav>
     <button class="actif" data-onglet="saisie">Accueil</button>
     <button data-onglet="graphique">Graphique</button>
+    <button data-onglet="photos">Photos</button>
     <button data-onglet="historique">Historique</button>
   </nav>
 
@@ -146,6 +152,19 @@
         <h3>Dernières pesées</h3>
         <div id="dernieres" class="defile">Chargement…</div>
       </div>
+
+      <!-- 4. Photos de progression -->
+      <div class="carte">
+        <h3>Photos de progression</h3>
+        <form id="formPhotos">
+          <label>Date <input type="date" id="datePhotos" required></label>
+          <label>Photo de face <input type="file" id="photoFace" accept="image/*"></label>
+          <label>Photo de profil <input type="file" id="photoProfil" accept="image/*"></label>
+          <label>Photo de dos <input type="file" id="photoDos" accept="image/*"></label>
+          <button type="submit" class="principal">Enregistrer les photos</button>
+          <div id="messagePhotos" class="message"></div>
+        </form>
+      </div>
     </section>
 
     <!-- Onglet 2 : Graphique -->
@@ -173,7 +192,15 @@
       </div>
     </section>
 
-    <!-- Onglet 3 : Historique -->
+    <!-- Onglet 3 : Photos -->
+    <section id="photos" class="onglet">
+      <div class="carte">
+        <h3>Évolution en photos</h3>
+        <div id="tableauPhotos" class="defile">Chargement…</div>
+      </div>
+    </section>
+
+    <!-- Onglet 4 : Historique -->
     <section id="historique" class="onglet">
       <div class="carte">
         <h3>Historique des pesées</h3>
@@ -195,10 +222,13 @@
   const TABLE_MESURES = 'mesures_corporelles';
   const MESURES = ['bras', 'cuisse', 'hanche', 'taille', 'poitrine', 'epaules'];
   const NOMS_MESURES = { bras: 'Bras', cuisse: 'Cuisse', hanche: 'Hanche', taille: 'Taille', poitrine: 'Poitrine', epaules: 'Épaules' };
+  const VUES_PHOTO = ['face', 'profil', 'dos'];
+  const NOMS_PHOTO = { face: 'Face', profil: 'Profil', dos: 'Dos' };
 
   let userId = null;
   let pesees = [];
   let mesures = [];
+  let photosRows = [];
   let googleChargé = false;
   let ongletActif = 'saisie';
 
@@ -337,6 +367,7 @@
     const aujourdhui = versIso(new Date());
     document.getElementById('datePesee').value = aujourdhui;
     document.getElementById('dateMensure').value = aujourdhui;
+    document.getElementById('datePhotos').value = aujourdhui;
     charger();
   }
 
@@ -353,7 +384,7 @@
   });
 
   // ---------- Données ----------
-  // Chaque table est chargée séparément : une erreur sur les mesures n'empêche pas d'afficher les pesées.
+  // Chaque table est chargée séparément : une erreur sur une table n'empêche pas d'afficher les autres.
   async function charger() {
     const resPesees = await sb.from('pesees').select('*').order('date', { ascending: false });
     if (resPesees.error) {
@@ -373,6 +404,8 @@
       mesures = resMesures.data;
       afficherHistoriqueMesures();
     }
+
+    await chargerPhotos();
 
     if (ongletActif === 'graphique') dessiner();
   }
@@ -469,6 +502,107 @@
       charger();
     }
   });
+
+  // ---------- Photos : réduction avant envoi ----------
+  // Les photos du téléphone sont lourdes : on les réduit à 1200 px et en JPEG pour économiser le stockage.
+  async function compresser(fichier) {
+    const image = await createImageBitmap(fichier);
+    const echelle = Math.min(1, 1200 / Math.max(image.width, image.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(image.width * echelle);
+    canvas.height = Math.round(image.height * echelle);
+    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  }
+
+  // ---------- Saisie des photos ----------
+  document.getElementById('formPhotos').addEventListener('submit', async e => {
+    e.preventDefault();
+    const message = document.getElementById('messagePhotos');
+    const date = document.getElementById('datePhotos').value;
+    const champs = { face: 'photoFace', profil: 'photoProfil', dos: 'photoDos' };
+    const ligne = { user_id: userId, date: date };
+    let envoyees = 0;
+
+    try {
+      for (const [cle, idChamp] of Object.entries(champs)) {
+        const fichier = document.getElementById(idChamp).files[0];
+        if (!fichier) continue;
+
+        message.textContent = 'Envoi de la photo ' + NOMS_PHOTO[cle].toLowerCase() + '…';
+        const blob = await compresser(fichier);
+        const chemin = userId + '/' + date + '/' + cle + '.jpg';
+
+        const { error } = await sb.storage.from('photos').upload(chemin, blob, { upsert: true, contentType: 'image/jpeg' });
+        if (error) throw error;
+
+        ligne[cle] = chemin;
+        envoyees++;
+      }
+
+      if (!envoyees) {
+        message.textContent = 'Choisissez au moins une photo.';
+        return;
+      }
+
+      const { error } = await sb.from('photos_progression').upsert(ligne, { onConflict: 'user_id,date' });
+      if (error) throw error;
+
+      message.textContent = envoyees + ' photo(s) enregistrée(s).';
+      Object.values(champs).forEach(idChamp => { document.getElementById(idChamp).value = ''; });
+      chargerPhotos();
+    } catch (err) {
+      message.textContent = 'Erreur : ' + err.message;
+    }
+  });
+
+  // ---------- Affichage des photos ----------
+  async function chargerPhotos() {
+    const { data, error } = await sb.from('photos_progression').select('*').order('date', { ascending: false });
+    if (error) {
+      document.getElementById('tableauPhotos').textContent = 'Erreur photos : ' + error.message;
+      return;
+    }
+    photosRows = data;
+    await afficherPhotos();
+  }
+
+  async function afficherPhotos() {
+    const zone = document.getElementById('tableauPhotos');
+    if (!photosRows.length) {
+      zone.textContent = 'Aucune photo pour le moment.';
+      return;
+    }
+
+    // Les liens d'affichage sont temporaires (1 heure) car le stockage est privé
+    const chemins = [];
+    photosRows.forEach(r => VUES_PHOTO.forEach(c => { if (r[c]) chemins.push(r[c]); }));
+
+    const urls = {};
+    if (chemins.length) {
+      const { data, error } = await sb.storage.from('photos').createSignedUrls(chemins, 3600);
+      if (error) {
+        zone.textContent = 'Erreur photos : ' + error.message;
+        return;
+      }
+      data.forEach(d => { if (d.signedUrl) urls[d.path] = d.signedUrl; });
+    }
+
+    let html = '<table class="tableau-photos"><tr><th>Date</th>';
+    VUES_PHOTO.forEach(c => { html += '<th>' + NOMS_PHOTO[c] + '</th>'; });
+    html += '</tr>';
+
+    photosRows.forEach(r => {
+      html += '<tr><td>' + formaterDate(r.date) + '</td>';
+      VUES_PHOTO.forEach(c => {
+        const url = r[c] ? urls[r[c]] : null;
+        html += '<td>' + (url ? '<a href="' + url + '" target="_blank"><img src="' + url + '" alt="' + NOMS_PHOTO[c] + '"></a>' : '—') + '</td>';
+      });
+      html += '</tr>';
+    });
+
+    zone.innerHTML = html + '</table>';
+  }
 
   // ---------- Graphique ----------
   function dansPeriode(dateStr) {
