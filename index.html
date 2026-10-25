@@ -32,7 +32,8 @@
   .note { font-size: 12px; color: #555; font-style: italic; }
   .ligne-deux { display: flex; gap: 8px; }
   .ligne-deux > * { flex: 1; }
-  .supprimer { font-size: 12px; padding: 4px 8px; background: #c62828; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  .supprimer { font-size: 14px; line-height: 1; padding: 2px 6px; background: none; color: #999; border: none; border-radius: 4px; cursor: pointer; }
+  .supprimer:hover { color: #c62828; }
 </style>
 </head>
 <body>
@@ -188,7 +189,7 @@
         + '<td>' + formaterDate(p.date) + '</td>'
         + '<td>' + fr(p.poids) + ' kg' + (p.note ? '<div class="note">' + escapeHtml(p.note) + '</div>' : '') + '</td>'
         + '<td>' + badgeVariation(liste, i) + '</td>'
-        + '<td><button class="supprimer" onclick="supprimerPesee(' + p.id + ')">Supprimer</button></td>'
+        + '<td><button class="supprimer" title="Supprimer" onclick="supprimerPesee(' + p.id + ')">&times;</button></td>'
         + '</tr>';
     });
     return html + '</table>';
