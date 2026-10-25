@@ -22,6 +22,8 @@
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
   th { background: #e8f0fe; }
+  .defile { overflow-x: auto; }
+  .tableau-mesures th, .tableau-mesures td { font-size: 13px; padding: 6px; white-space: nowrap; }
   .message { margin-top: 10px; font-size: 14px; }
   .onglet { display: none; }
   .onglet.visible { display: block; }
@@ -32,6 +34,7 @@
   .note { font-size: 12px; color: #555; font-style: italic; }
   .ligne-deux { display: flex; gap: 8px; }
   .ligne-deux > * { flex: 1; }
+  .grille-mesures { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .supprimer { font-size: 14px; line-height: 1; padding: 2px 6px; background: none; color: #999; border: none; border-radius: 4px; cursor: pointer; }
   .supprimer:hover { color: #c62828; }
 </style>
@@ -75,15 +78,23 @@
 
       <div class="carte">
         <h3>Dernières pesées</h3>
-        <div id="dernieres">Chargement…</div>
+        <div id="dernieres" class="defile">Chargement…</div>
       </div>
 
       <div class="carte">
-        <h3>Début des règles</h3>
-        <form id="formMenstruation">
-          <label>Date de début <input type="date" id="dateMenstruation" required></label>
-          <button type="submit" class="principal">Enregistrer</button>
-          <div id="messageMenstruation" class="message"></div>
+        <h3>Mesures corporelles</h3>
+        <form id="formMensure">
+          <label>Date <input type="date" id="dateMensure" required></label>
+          <div class="grille-mesures">
+            <label>Tour de bras (cm) <input type="number" id="m_bras" step="0.1" inputmode="decimal"></label>
+            <label>Tour de cuisse (cm) <input type="number" id="m_cuisse" step="0.1" inputmode="decimal"></label>
+            <label>Tour de hanche (cm) <input type="number" id="m_hanche" step="0.1" inputmode="decimal"></label>
+            <label>Tour de taille (cm) <input type="number" id="m_taille" step="0.1" inputmode="decimal"></label>
+            <label>Tour de poitrine (cm) <input type="number" id="m_poitrine" step="0.1" inputmode="decimal"></label>
+            <label>Tour d'épaules (cm) <input type="number" id="m_epaules" step="0.1" inputmode="decimal"></label>
+          </div>
+          <button type="submit" class="principal">Enregistrer les mesures</button>
+          <div id="messageMensure" class="message"></div>
         </form>
       </div>
     </section>
@@ -96,7 +107,6 @@
             <select id="type">
               <option value="poids">Poids quotidien</option>
               <option value="semaine">Moyenne par semaine</option>
-              <option value="cycles">Cycles menstruels</option>
             </select>
           </label>
           <label>Période
@@ -118,7 +128,11 @@
     <section id="historique" class="onglet">
       <div class="carte">
         <h3>Historique des pesées</h3>
-        <div id="tableauComplet">Chargement…</div>
+        <div id="tableauComplet" class="defile">Chargement…</div>
+      </div>
+      <div class="carte">
+        <h3>Historique des mesures corporelles</h3>
+        <div id="tableauMensures" class="defile">Chargement…</div>
       </div>
     </section>
   </main>
@@ -129,9 +143,12 @@
   const SUPABASE_CLE = 'sb_publishable_7gctFj_zdHJ_vieQYEAeqg_7_ioeNls';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 
+  const MESURES = ['bras', 'cuisse', 'hanche', 'taille', 'poitrine', 'epaules'];
+  const NOMS_MESURES = { bras: 'Bras', cuisse: 'Cuisse', hanche: 'Hanche', taille: 'Taille', poitrine: 'Poitrine', epaules: 'Épaules' };
+
   let userId = null;
   let pesees = [];
-  let menstruations = [];
+  let mensurations = [];
   let googleChargé = false;
   let ongletActif = 'saisie';
 
@@ -195,6 +212,20 @@
     return html + '</table>';
   }
 
+  function tableauMensures(liste) {
+    let html = '<table class="tableau-mesures"><tr><th>Date</th>';
+    MESURES.forEach(c => { html += '<th>' + NOMS_MESURES[c] + '</th>'; });
+    html += '<th></th></tr>';
+    liste.forEach(m => {
+      html += '<tr><td>' + formaterDate(m.date) + '</td>';
+      MESURES.forEach(c => {
+        html += '<td>' + (m[c] !== null ? fr(m[c]) : '—') + '</td>';
+      });
+      html += '<td><button class="supprimer" title="Supprimer" onclick="supprimerMensure(' + m.id + ')">&times;</button></td></tr>';
+    });
+    return html + '</table>';
+  }
+
   // Texte affiché au survol d'un point du graphique
   function infoBulle(p) {
     let t = formaterDate(p.date) + '\nPoids : ' + fr(p.poids) + ' kg';
@@ -237,7 +268,7 @@
     document.getElementById('appli').style.display = 'block';
     const aujourdhui = versIso(new Date());
     document.getElementById('datePesee').value = aujourdhui;
-    document.getElementById('dateMenstruation').value = aujourdhui;
+    document.getElementById('dateMensure').value = aujourdhui;
     charger();
   }
 
@@ -257,14 +288,14 @@
   async function charger() {
     const [resPesees, resMens] = await Promise.all([
       sb.from('pesees').select('*').order('date', { ascending: false }),
-      sb.from('menstruations').select('*').order('date_debut', { ascending: false })
+      sb.from('mensurations').select('*').order('date', { ascending: false })
     ]);
     if (resPesees.error || resMens.error) {
       document.getElementById('dernieres').textContent = 'Erreur : ' + (resPesees.error || resMens.error).message;
       return;
     }
     pesees = resPesees.data;
-    menstruations = resMens.data;
+    mensurations = resMens.data;
     afficherDernieres();
     afficherHistorique();
     if (ongletActif === 'graphique') dessiner();
@@ -281,9 +312,14 @@
   function afficherHistorique() {
     if (!pesees.length) {
       document.getElementById('tableauComplet').textContent = 'Aucune pesée pour le moment.';
-      return;
+    } else {
+      document.getElementById('tableauComplet').innerHTML = tableauPesees(pesees);
     }
-    document.getElementById('tableauComplet').innerHTML = tableauPesees(pesees);
+    if (!mensurations.length) {
+      document.getElementById('tableauMensures').textContent = 'Aucune mesure pour le moment.';
+    } else {
+      document.getElementById('tableauMensures').innerHTML = tableauMensures(mensurations);
+    }
   }
 
   async function supprimerPesee(id) {
@@ -296,7 +332,17 @@
     }
   }
 
-  // ---------- Saisie ----------
+  async function supprimerMensure(id) {
+    if (!confirm('Supprimer ces mesures ?')) return;
+    const { error } = await sb.from('mensurations').delete().eq('id', id);
+    if (error) {
+      alert('Erreur : ' + error.message);
+    } else {
+      charger();
+    }
+  }
+
+  // ---------- Saisie des pesées ----------
   document.getElementById('formPesee').addEventListener('submit', async e => {
     e.preventDefault();
     const message = document.getElementById('messagePesee');
@@ -319,20 +365,28 @@
     }
   });
 
-  document.getElementById('formMenstruation').addEventListener('submit', async e => {
+  // ---------- Saisie des mesures corporelles ----------
+  document.getElementById('formMensure').addEventListener('submit', async e => {
     e.preventDefault();
-    const message = document.getElementById('messageMenstruation');
+    const message = document.getElementById('messageMensure');
     message.textContent = 'Enregistrement…';
 
-    const { error } = await sb.from('menstruations').upsert({
+    const ligne = {
       user_id: userId,
-      date_debut: document.getElementById('dateMenstruation').value
-    }, { onConflict: 'user_id,date_debut' });
+      date: document.getElementById('dateMensure').value
+    };
+    MESURES.forEach(c => {
+      const valeur = document.getElementById('m_' + c).value;
+      ligne[c] = valeur === '' ? null : parseFloat(valeur);
+    });
+
+    const { error } = await sb.from('mensurations').upsert(ligne, { onConflict: 'user_id,date' });
 
     if (error) {
       message.textContent = 'Erreur : ' + error.message;
     } else {
-      message.textContent = 'Début enregistré.';
+      message.textContent = 'Mesures enregistrées.';
+      MESURES.forEach(c => { document.getElementById('m_' + c).value = ''; });
       charger();
     }
   });
@@ -394,20 +448,6 @@
       table.addColumn('date', 'Semaine du');
       table.addColumn('number', 'Poids moyen (kg)');
       options.vAxis = { title: 'kg' };
-    }
-
-    if (type === 'cycles') {
-      const triees = menstruations
-        .filter(m => dansPeriode(m.date_debut))
-        .slice()
-        .sort((a, b) => a.date_debut.localeCompare(b.date_debut));
-      for (let i = 1; i < triees.length; i++) {
-        const jours = Math.round((dateLocale(triees[i].date_debut) - dateLocale(triees[i - 1].date_debut)) / 86400000);
-        lignes.push([dateLocale(triees[i].date_debut), jours]);
-      }
-      table.addColumn('date', 'Début du cycle');
-      table.addColumn('number', 'Jours entre deux débuts');
-      options.vAxis = { title: 'jours' };
     }
 
     if (!lignes.length) {
