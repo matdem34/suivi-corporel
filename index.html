@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suivi corporel</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #222; }
+  header { background: #4285f4; color: white; padding: 12px 16px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+  header button { background: white; color: #4285f4; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+  nav { display: flex; background: white; border-bottom: 1px solid #ddd; }
+  nav button { flex: 1; padding: 12px; border: none; background: none; font-size: 15px; cursor: pointer; }
+  nav button.actif { border-bottom: 3px solid #4285f4; color: #4285f4; font-weight: bold; }
+  main { padding: 16px; max-width: 720px; margin: auto; }
+  .carte { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  label { display: block; margin-top: 10px; font-size: 14px; }
+  input, select { width: 100%; padding: 10px; margin-top: 4px; font-size: 16px; border: 1px solid #bbb; border-radius: 6px; background: white; }
+  button.principal { width: 100%; margin-top: 14px; padding: 12px; font-size: 16px; background: #4285f4; color: white; border: none; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
+  th { background: #e8f0fe; }
+  .message { margin-top: 10px; font-size: 14px; }
+  .onglet { display: none; }
+  .onglet.visible { display: block; }
+  #graph { width: 100%; height: 320px; }
+  .hausse { color: #c62828; font-weight: bold; }
+  .baisse { color: #2e7d32; font-weight: bold; }
+  .stable { color: #666; }
+  .note { font-size: 12px; color: #555; font-style: italic; }
+  .ligne-deux { display: flex; gap: 8px; }
+  .ligne-deux > * { flex: 1; }
+</style>
+</head>
+<body>
+
+<div id="connexion" class="carte" style="max-width:420px;margin:40px auto;display:none">
+  <h3>Connexion</h3>
+  <form id="formConnexion">
+    <label>E-mail <input type="email" id="email" required></label>
+    <label>Mot de passe <input type="password" id="motdepasse" required></label>
+    <button type="submit" class="principal">Se connecter</button>
+    <div id="messageConnexion" class="message"></div>
+  </form>
+</div>
+
+<div id="appli" style="display:none">
+  <header>
+    Suivi corporel
+    <button id="deconnexion">Quitter</button>
+  </header>
+  <nav>
+    <button class="actif" data-onglet="saisie">Saisie</button>
+    <button data-onglet="graphique">Graphique</button>
+    <button data-onglet="historique">Historique</button>
+  </nav>
+
+  <main>
+    <!-- Onglet 1 : Saisie -->
+    <section id="saisie" class="onglet visible">
+      <div class="carte">
+        <h3>Pesée du jour</h3>
+        <form id="formPesee">
+          <label>Date <input type="date" id="datePesee" required></label>
+          <label>Poids (kg) <input type="number" id="poids" step="0.1" inputmode="decimal" required></label>
+          <label>Note (facultatif) <input type="text" id="note" placeholder="ex : restaurant hier soir"></label>
+          <button type="submit" class="principal">Enregistrer la pesée</button>
+          <div id="messagePesee" class="message"></div>
+        </form>
+      </div>
+
+      <div class="carte">
+        <h3>Dernières pesées</h3>
+        <div id="dernieres">Chargement…</div>
+      </div>
+
+      <div class="carte">
+        <h3>Début des règles</h3>
+        <form id="formMenstruation">
+          <label>Date de début <input type="date" id="dateMenstruation" required></label>
+          <button type="submit" class="principal">Enregistrer</button>
+          <div id="messageMenstruation" class="message"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Onglet 2 : Graphique -->
+    <section id="graphique" class="onglet">
+      <div class="carte">
+        <div class="ligne-deux">
+          <label>Type
+            <select id="type">
+              <option value="poids">Poids quotidien</option>
+              <option value="semaine">Moyenne par semaine</option>
+              <option value="cycles">Cycles menstruels</option>
+            </select>
+          </label>
+          <label>Période
+            <select id="periode">
+              <option value="5j">5 derniers jours</option>
+              <option value="1m">1 mois</option>
+              <option value="6m">6 mois</option>
+              <option value="1a">1 an</option>
+              <option value="tout" selected>Tout</option>
+            </select>
+          </label>
+        </div>
+        <div id="graph"></div>
+        <div id="resume" class="message"></div>
+      </div>
+    </section>
+
+    <!-- Onglet 3 : Historique -->
+    <section id="historique" class="onglet">
+      <div class="carte">
+        <h3>Historique des pesées</h3>
+        <div id="tableauComplet">Chargement…</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://ylzizhjrqcwtjgqoiqhe.supabase.co';
+ const SUPABASE_CLE = 'sb_publishable_7gctFj_zdHJ_vieQYEAeqg_7_ioeNls';
+   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
+
+  let userId = null;
+  let pesees = [];
+  let menstruations = [];
+  let googleChargé = false;
+  let ongletActif = 'saisie';
+
+  google.charts.load('current', { packages: ['corechart'] });
+  google.charts.setOnLoadCallback(() => {
+    googleChargé = true;
+    if (ongletActif === 'graphique') dessiner();
+  });
+
+  // ---------- Utilitaires ----------
+  function fr(n) {
+    return Number(n).toFixed(1).replace('.', ',');
+  }
+
+  function formaterDate(s) {
+    const [y, m, d] = s.split('-');
+    return d + '/' + m + '/' + y;
+  }
+
+  function dateLocale(s) {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function versIso(d) {
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const j = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + j;
+  }
+
+  function lundiDe(d) {
+    const x = new Date(d);
+    x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+    return x;
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function badgeVariation(liste, i) {
+    if (i >= liste.length - 1) return '';
+    const diff = liste[i].poids - liste[i + 1].poids;
+    const cls = diff > 0.05 ? 'hausse' : diff < -0.05 ? 'baisse' : 'stable';
+    const signe = diff > 0 ? '+' : '';
+    return '<span class="' + cls + '">' + signe + fr(diff) + ' kg</span>';
+  }
+
+  function tableauPesees(liste) {
+    let html = '<table><tr><th>Date</th><th>Poids</th><th>Variation</th></tr>';
+    liste.forEach((p, i) => {
+      html += '<tr>'
+        + '<td>' + formaterDate(p.date) + '</td>'
+        + '<td>' + fr(p.poids) + ' kg' + (p.note ? '<div class="note">' + escapeHtml(p.note) + '</div>' : '') + '</td>'
+        + '<td>' + badgeVariation(liste, i) + '</td>'
+        + '</tr>';
+    });
+    return html + '</table>';
+  }
+
+  // ---------- Connexion ----------
+  async function demarrer() {
+    const { data } = await sb.auth.getSession();
+    if (data.session) {
+      userId = data.session.user.id;
+      montrerAppli();
+    } else {
+      document.getElementById('connexion').style.display = 'block';
+    }
+  }
+
+  document.getElementById('formConnexion').addEventListener('submit', async e => {
+    e.preventDefault();
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: document.getElementById('email').value,
+      password: document.getElementById('motdepasse').value
+    });
+    if (error) {
+      document.getElementById('messageConnexion').textContent = 'Erreur : ' + error.message;
+    } else {
+      userId = data.user.id;
+      montrerAppli();
+    }
+  });
+
+  document.getElementById('deconnexion').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    location.reload();
+  });
+
+  function montrerAppli() {
+    document.getElementById('connexion').style.display = 'none';
+    document.getElementById('appli').style.display = 'block';
+    const aujourdhui = versIso(new Date());
+    document.getElementById('datePesee').value = aujourdhui;
+    document.getElementById('dateMenstruation').value = aujourdhui;
+    charger();
+  }
+
+  // ---------- Navigation ----------
+  document.querySelectorAll('nav button').forEach(bouton => {
+    bouton.addEventListener('click', () => {
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('actif'));
+      document.querySelectorAll('.onglet').forEach(s => s.classList.remove('visible'));
+      bouton.classList.add('actif');
+      document.getElementById(bouton.dataset.onglet).classList.add('visible');
+      ongletActif = bouton.dataset.onglet;
+      if (ongletActif === 'graphique') dessiner();
+    });
+  });
+
+  // ---------- Données ----------
+  async function charger() {
+    const [resPesees, resMens] = await Promise.all([
+      sb.from('pesees').select('*').order('date', { ascending: false }),
+      sb.from('menstruations').select('*').order('date_debut', { ascending: false })
+    ]);
+    if (resPesees.error || resMens.error) {
+      document.getElementById('dernieres').textContent = 'Erreur : ' + (resPesees.error || resMens.error).message;
+      return;
+    }
+    pesees = resPesees.data;
+    menstruations = resMens.data;
+    afficherDernieres();
+    afficherHistorique();
+    if (ongletActif === 'graphique') dessiner();
+  }
+
+  function afficherDernieres() {
+    if (!pesees.length) {
+      document.getElementById('dernieres').textContent = 'Aucune pesée pour le moment.';
+      return;
+    }
+    document.getElementById('dernieres').innerHTML = tableauPesees(pesees.slice(0, 5));
+  }
+
+  function afficherHistorique() {
+    if (!pesees.length) {
+      document.getElementById('tableauComplet').textContent = 'Aucune pesée pour le moment.';
+      return;
+    }
+    document.getElementById('tableauComplet').innerHTML = tableauPesees(pesees);
+  }
+
+  // ---------- Saisie ----------
+  document.getElementById('formPesee').addEventListener('submit', async e => {
+    e.preventDefault();
+    const message = document.getElementById('messagePesee');
+    message.textContent = 'Enregistrement…';
+
+    const { error } = await sb.from('pesees').upsert({
+      user_id: userId,
+      date: document.getElementById('datePesee').value,
+      poids: parseFloat(document.getElementById('poids').value),
+      note: document.getElementById('note').value.trim() || null
+    }, { onConflict: 'user_id,date' });
+
+    if (error) {
+      message.textContent = 'Erreur : ' + error.message;
+    } else {
+      message.textContent = 'Pesée enregistrée.';
+      document.getElementById('poids').value = '';
+      document.getElementById('note').value = '';
+      charger();
+    }
+  });
+
+  document.getElementById('formMenstruation').addEventListener('submit', async e => {
+    e.preventDefault();
+    const message = document.getElementById('messageMenstruation');
+    message.textContent = 'Enregistrement…';
+
+    const { error } = await sb.from('menstruations').upsert({
+      user_id: userId,
+      date_debut: document.getElementById('dateMenstruation').value
+    }, { onConflict: 'user_id,date_debut' });
+
+    if (error) {
+      message.textContent = 'Erreur : ' + error.message;
+    } else {
+      message.textContent = 'Début enregistré.';
+      charger();
+    }
+  });
+
+  // ---------- Graphique ----------
+  function dansPeriode(dateStr) {
+    const p = document.getElementById('periode').value;
+    if (p === 'tout') return true;
+    const jours = { '5j': 5, '1m': 30, '6m': 182, '1a': 365 }[p];
+    const limite = new Date();
+    limite.setHours(0, 0, 0, 0);
+    limite.setDate(limite.getDate() - jours);
+    return dateLocale(dateStr) >= limite;
+  }
+
+  function dessiner() {
+    if (!googleChargé) return;
+
+    const type = document.getElementById('type').value;
+    const table = new google.visualization.DataTable();
+    const options = {
+      legend: 'none',
+      pointSize: 5,
+      hAxis: { format: 'dd/MM' },
+      chartArea: { width: '85%', height: '75%' }
+    };
+    let lignes = [];
+    let resume = '';
+
+    if (type === 'poids') {
+      lignes = pesees
+        .filter(p => dansPeriode(p.date))
+        .slice()
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(p => [dateLocale(p.date), Number(p.poids)]);
+      table.addColumn('date', 'Date');
+      table.addColumn('number', 'Poids (kg)');
+      options.vAxis = { title: 'kg' };
+      if (lignes.length) {
+        const premier = lignes[0][1];
+        const dernier = lignes[lignes.length - 1][1];
+        const diff = dernier - premier;
+        resume = 'Départ : ' + fr(premier) + ' kg · Actuel : ' + fr(dernier) + ' kg · Variation : '
+          + (diff > 0 ? '+' : '') + fr(diff) + ' kg';
+      }
+    }
+
+    if (type === 'semaine') {
+      const groupes = {};
+      pesees.filter(p => dansPeriode(p.date)).forEach(p => {
+        const cle = versIso(lundiDe(dateLocale(p.date)));
+        (groupes[cle] = groupes[cle] || []).push(Number(p.poids));
+      });
+      lignes = Object.keys(groupes).sort().map(cle => {
+        const vals = groupes[cle];
+        return [dateLocale(cle), vals.reduce((a, b) => a + b, 0) / vals.length];
+      });
+      table.addColumn('date', 'Semaine du');
+      table.addColumn('number', 'Poids moyen (kg)');
+      options.vAxis = { title: 'kg' };
+    }
+
+    if (type === 'cycles') {
+      const triees = menstruations
+        .filter(m => dansPeriode(m.date_debut))
+        .slice()
+        .sort((a, b) => a.date_debut.localeCompare(b.date_debut));
+      for (let i = 1; i < triees.length; i++) {
+        const jours = Math.round((dateLocale(triees[i].date_debut) - dateLocale(triees[i - 1].date_debut)) / 86400000);
+        lignes.push([dateLocale(triees[i].date_debut), jours]);
+      }
+      table.addColumn('date', 'Début du cycle');
+      table.addColumn('number', 'Jours entre deux débuts');
+      options.vAxis = { title: 'jours' };
+    }
+
+    if (!lignes.length) {
+      document.getElementById('graph').textContent = 'Pas de données sur cette période.';
+      document.getElementById('resume').textContent = '';
+      return;
+    }
+
+    document.getElementById('graph').textContent = '';
+    table.addRows(lignes);
+    const chart = new google.visualization.LineChart(document.getElementById('graph'));
+    chart.draw(table, options);
+    document.getElementById('resume').textContent = resume;
+  }
+
+  document.getElementById('type').addEventListener('change', dessiner);
+  document.getElementById('periode').addEventListener('change', dessiner);
+
+  demarrer();
+</script>
+</body>
+</html>
