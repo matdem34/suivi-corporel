@@ -32,6 +32,7 @@
   .note { font-size: 12px; color: #555; font-style: italic; }
   .ligne-deux { display: flex; gap: 8px; }
   .ligne-deux > * { flex: 1; }
+  .supprimer { font-size: 12px; padding: 4px 8px; background: #c62828; color: white; border: none; border-radius: 4px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -124,8 +125,8 @@
 
 <script>
   const SUPABASE_URL = 'https://ylzizhjrqcwtjgqoiqhe.supabase.co';
- const SUPABASE_CLE = 'sb_publishable_7gctFj_zdHJ_vieQYEAeqg_7_ioeNls';
-   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
+  const SUPABASE_CLE = 'sb_publishable_7gctFj_zdHJ_vieQYEAeqg_7_ioeNls';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 
   let userId = null;
   let pesees = [];
@@ -181,12 +182,13 @@
   }
 
   function tableauPesees(liste) {
-    let html = '<table><tr><th>Date</th><th>Poids</th><th>Variation</th></tr>';
+    let html = '<table><tr><th>Date</th><th>Poids</th><th>Variation</th><th></th></tr>';
     liste.forEach((p, i) => {
       html += '<tr>'
         + '<td>' + formaterDate(p.date) + '</td>'
         + '<td>' + fr(p.poids) + ' kg' + (p.note ? '<div class="note">' + escapeHtml(p.note) + '</div>' : '') + '</td>'
         + '<td>' + badgeVariation(liste, i) + '</td>'
+        + '<td><button class="supprimer" onclick="supprimerPesee(' + p.id + ')">Supprimer</button></td>'
         + '</tr>';
     });
     return html + '</table>';
@@ -274,6 +276,16 @@
       return;
     }
     document.getElementById('tableauComplet').innerHTML = tableauPesees(pesees);
+  }
+
+  async function supprimerPesee(id) {
+    if (!confirm('Supprimer cette pesée ?')) return;
+    const { error } = await sb.from('pesees').delete().eq('id', id);
+    if (error) {
+      alert('Erreur : ' + error.message);
+    } else {
+      charger();
+    }
   }
 
   // ---------- Saisie ----------
