@@ -7,38 +7,75 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 <style>
+  :root {
+    --fond: #0f1117;
+    --carte: #181b26;
+    --carte-claire: #1f2330;
+    --bordure: #2a2f3d;
+    --texte: #e6e8ef;
+    --texte-doux: #9aa0b4;
+    --accent: #6c8cff;
+    --accent-fort: #4a6cf7;
+    --hausse: #ff6b6b;
+    --baisse: #4ade80;
+  }
   * { box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #222; }
-  header { background: #4285f4; color: white; padding: 12px 16px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-  header button { background: white; color: #4285f4; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
-  nav { display: flex; background: white; border-bottom: 1px solid #ddd; }
-  nav button { flex: 1; padding: 12px; border: none; background: none; font-size: 15px; cursor: pointer; }
-  nav button.actif { border-bottom: 3px solid #4285f4; color: #4285f4; font-weight: bold; }
+  html, body { background: var(--fond); }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: var(--texte); }
+
+  header { background: var(--carte); color: var(--texte); padding: 14px 16px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bordure); }
+  header button { background: var(--carte-claire); color: var(--texte); border: 1px solid var(--bordure); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+
+  nav { display: flex; background: var(--carte); border-bottom: 1px solid var(--bordure); }
+  nav button { flex: 1; padding: 12px; border: none; background: none; color: var(--texte-doux); font-size: 15px; cursor: pointer; }
+  nav button.actif { color: var(--accent); border-bottom: 3px solid var(--accent); font-weight: bold; }
+
   main { padding: 16px; max-width: 720px; margin: auto; }
-  .carte { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-  label { display: block; margin-top: 10px; font-size: 14px; }
-  input, select { width: 100%; padding: 10px; margin-top: 4px; font-size: 16px; border: 1px solid #bbb; border-radius: 6px; background: white; }
-  button.principal { width: 100%; margin-top: 14px; padding: 12px; font-size: 16px; background: #4285f4; color: white; border: none; border-radius: 6px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
-  th { background: #e8f0fe; }
+
+  .carte { background: var(--carte); border: 1px solid var(--bordure); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .carte h3 { margin: 0 0 12px 0; font-size: 16px; color: var(--texte); }
+
+  label { display: block; margin-top: 12px; font-size: 13px; color: var(--texte-doux); }
+  input, select { width: 100%; padding: 11px; margin-top: 6px; font-size: 16px; border: 1px solid var(--bordure); border-radius: 8px; background: var(--fond); color: var(--texte); color-scheme: dark; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button.principal { width: 100%; margin-top: 16px; padding: 13px; font-size: 16px; background: var(--accent-fort); color: white; border: none; border-radius: 8px; cursor: pointer; }
+  button.principal:hover { background: var(--accent); }
+
+  .message { margin-top: 10px; font-size: 14px; color: var(--texte-doux); }
+
+  /* Carte "pesée du jour" */
+  .jour { text-align: center; padding: 22px 18px; background: linear-gradient(135deg, #1e2a52 0%, #181b26 70%); border-color: #2f3a6b; }
+  .jour .titre { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--texte-doux); }
+  .jour .date { font-size: 15px; color: var(--accent); margin-top: 4px; }
+  .jour .poids { font-size: 48px; font-weight: bold; margin: 10px 0 4px 0; color: var(--texte); }
+  .jour .poids span { font-size: 20px; color: var(--texte-doux); font-weight: normal; }
+  .jour .note { font-size: 14px; color: var(--texte-doux); font-style: italic; }
+  .jour .vide { font-size: 15px; color: var(--texte-doux); padding: 10px 0; }
+
   .defile { overflow-x: auto; }
-  .tableau-mesures th, .tableau-mesures td { font-size: 13px; padding: 6px; white-space: nowrap; }
-  .message { margin-top: 10px; font-size: 14px; }
-  .indicateur { margin-bottom: 12px; padding: 10px; border-radius: 6px; font-size: 14px; background: #e6f4ea; color: #1e6b33; border: 1px solid #b7dfc2; }
-  .indicateur[hidden] { display: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 9px 8px; border-bottom: 1px solid var(--bordure); text-align: left; vertical-align: top; }
+  th { color: var(--texte-doux); font-weight: normal; font-size: 13px; }
+  .tableau-mesures th, .tableau-mesures td { font-size: 13px; padding: 7px 6px; white-space: nowrap; }
+
+  .hausse { color: var(--hausse); font-weight: bold; }
+  .baisse { color: var(--baisse); font-weight: bold; }
+  .stable { color: var(--texte-doux); }
+  .note { font-size: 12px; color: var(--texte-doux); font-style: italic; }
+
+  .grille-mesures { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ligne-deux { display: flex; gap: 10px; }
+  .ligne-deux > * { flex: 1; }
+
+  .supprimer { font-size: 14px; line-height: 1; padding: 2px 6px; background: none; color: #5d6378; border: none; border-radius: 4px; cursor: pointer; }
+  .supprimer:hover { color: var(--hausse); }
+
   .onglet { display: none; }
   .onglet.visible { display: block; }
   #graph { width: 100%; height: 320px; }
-  .hausse { color: #c62828; font-weight: bold; }
-  .baisse { color: #2e7d32; font-weight: bold; }
-  .stable { color: #666; }
-  .note { font-size: 12px; color: #555; font-style: italic; }
-  .ligne-deux { display: flex; gap: 8px; }
-  .ligne-deux > * { flex: 1; }
-  .grille-mesures { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .supprimer { font-size: 14px; line-height: 1; padding: 2px 6px; background: none; color: #999; border: none; border-radius: 4px; cursor: pointer; }
-  .supprimer:hover { color: #c62828; }
+
+  #connexion .carte { border-radius: 16px; }
 </style>
 </head>
 <body>
@@ -59,17 +96,24 @@
     <button id="deconnexion">Quitter</button>
   </header>
   <nav>
-    <button class="actif" data-onglet="saisie">Saisie</button>
+    <button class="actif" data-onglet="saisie">Accueil</button>
     <button data-onglet="graphique">Graphique</button>
     <button data-onglet="historique">Historique</button>
   </nav>
 
   <main>
-    <!-- Onglet 1 : Saisie -->
+    <!-- Onglet 1 : Accueil -->
     <section id="saisie" class="onglet visible">
+
+      <!-- 1. Pesée du jour -->
+      <div class="carte jour">
+        <div class="titre">Pesée du jour</div>
+        <div id="aujourdhui"></div>
+      </div>
+
+      <!-- Formulaire de pesée -->
       <div class="carte">
-        <h3>Pesée du jour</h3>
-        <div id="indicateur" class="indicateur" hidden></div>
+        <h3>Enregistrer une pesée</h3>
         <form id="formPesee">
           <label>Date <input type="date" id="datePesee" required></label>
           <label>Poids (kg) <input type="number" id="poids" step="0.1" inputmode="decimal" required></label>
@@ -79,11 +123,7 @@
         </form>
       </div>
 
-      <div class="carte">
-        <h3>Dernières pesées</h3>
-        <div id="dernieres" class="defile">Chargement…</div>
-      </div>
-
+      <!-- 2. Mesures corporelles -->
       <div class="carte">
         <h3>Mesures corporelles</h3>
         <form id="formMensure">
@@ -99,6 +139,12 @@
           <button type="submit" class="principal">Enregistrer les mesures</button>
           <div id="messageMensure" class="message"></div>
         </form>
+      </div>
+
+      <!-- 3. Dernières pesées -->
+      <div class="carte">
+        <h3>Dernières pesées</h3>
+        <div id="dernieres" class="defile">Chargement…</div>
       </div>
     </section>
 
@@ -237,21 +283,23 @@
     return t;
   }
 
-  // ---------- Indicateur de pesée déjà faite ----------
-  function majIndicateur() {
-    const indicateur = document.getElementById('indicateur');
-    const dateChoisie = document.getElementById('datePesee').value;
-    const existante = pesees.find(p => p.date === dateChoisie);
-    if (existante) {
-      indicateur.textContent = '✔ Pesée déjà enregistrée pour cette date : ' + fr(existante.poids) + ' kg';
-      indicateur.hidden = false;
+  // ---------- Pesée du jour (accueil) ----------
+  function afficherAujourdhui() {
+    const aujourdhui = versIso(new Date());
+    const zone = document.getElementById('aujourdhui');
+    const pesee = pesees.find(p => p.date === aujourdhui);
+
+    if (pesee) {
+      zone.innerHTML =
+        '<div class="date">' + formaterDate(aujourdhui) + '</div>'
+        + '<div class="poids">' + fr(pesee.poids) + '<span> kg</span></div>'
+        + (pesee.note ? '<div class="note">' + escapeHtml(pesee.note) + '</div>' : '');
     } else {
-      indicateur.textContent = '';
-      indicateur.hidden = true;
+      zone.innerHTML =
+        '<div class="date">' + formaterDate(aujourdhui) + '</div>'
+        + '<div class="vide">Pas encore de pesée aujourd\'hui</div>';
     }
   }
-
-  document.getElementById('datePesee').addEventListener('change', majIndicateur);
 
   // ---------- Connexion ----------
   async function demarrer() {
@@ -313,9 +361,9 @@
       document.getElementById('tableauComplet').textContent = 'Erreur pesées : ' + resPesees.error.message;
     } else {
       pesees = resPesees.data;
+      afficherAujourdhui();
       afficherDernieres();
       afficherHistoriquePesees();
-      majIndicateur();
     }
 
     const resMesures = await sb.from(TABLE_MESURES).select('*').order('date', { ascending: false });
@@ -433,17 +481,26 @@
     return dateLocale(dateStr) >= limite;
   }
 
+  function optionsGraphique() {
+    return {
+      backgroundColor: 'transparent',
+      legend: 'none',
+      colors: ['#6c8cff'],
+      lineWidth: 2,
+      pointSize: 5,
+      titleTextStyle: { color: '#9aa0b4' },
+      hAxis: { format: 'dd/MM', textStyle: { color: '#9aa0b4' }, gridlines: { color: '#2a2f3d' } },
+      vAxis: { textStyle: { color: '#9aa0b4' }, gridlines: { color: '#2a2f3d' }, baselineColor: '#2a2f3d' },
+      chartArea: { width: '85%', height: '75%' }
+    };
+  }
+
   function dessiner() {
     if (!googleChargé) return;
 
     const type = document.getElementById('type').value;
     const table = new google.visualization.DataTable();
-    const options = {
-      legend: 'none',
-      pointSize: 5,
-      hAxis: { format: 'dd/MM' },
-      chartArea: { width: '85%', height: '75%' }
-    };
+    const options = optionsGraphique();
     let lignes = [];
     let resume = '';
 
@@ -456,7 +513,7 @@
       table.addColumn('date', 'Date');
       table.addColumn('number', 'Poids (kg)');
       table.addColumn({ type: 'string', role: 'tooltip' });
-      options.vAxis = { title: 'kg' };
+      options.vAxis.title = 'kg';
       if (triees.length) {
         const premier = Number(triees[0].poids);
         const dernier = Number(triees[triees.length - 1].poids);
@@ -478,11 +535,12 @@
       });
       table.addColumn('date', 'Semaine du');
       table.addColumn('number', 'Poids moyen (kg)');
-      options.vAxis = { title: 'kg' };
+      options.vAxis.title = 'kg';
     }
 
     if (!lignes.length) {
       document.getElementById('graph').textContent = 'Pas de données sur cette période.';
+      document.getElementById('graph').style.color = '#9aa0b4';
       document.getElementById('resume').textContent = '';
       return;
     }
