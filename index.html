@@ -143,12 +143,13 @@
   const SUPABASE_CLE = 'sb_publishable_7gctFj_zdHJ_vieQYEAeqg_7_ioeNls';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 
+  const TABLE_MESURES = 'mesures_corporelles';
   const MESURES = ['bras', 'cuisse', 'hanche', 'taille', 'poitrine', 'epaules'];
   const NOMS_MESURES = { bras: 'Bras', cuisse: 'Cuisse', hanche: 'Hanche', taille: 'Taille', poitrine: 'Poitrine', epaules: 'Épaules' };
 
   let userId = null;
   let pesees = [];
-  let mensurations = [];
+  let mesures = [];
   let googleChargé = false;
   let ongletActif = 'saisie';
 
@@ -212,7 +213,7 @@
     return html + '</table>';
   }
 
-  function tableauMensures(liste) {
+  function tableauMesures(liste) {
     let html = '<table class="tableau-mesures"><tr><th>Date</th>';
     MESURES.forEach(c => { html += '<th>' + NOMS_MESURES[c] + '</th>'; });
     html += '<th></th></tr>';
@@ -221,7 +222,7 @@
       MESURES.forEach(c => {
         html += '<td>' + (m[c] !== null ? fr(m[c]) : '—') + '</td>';
       });
-      html += '<td><button class="supprimer" title="Supprimer" onclick="supprimerMensure(' + m.id + ')">&times;</button></td></tr>';
+      html += '<td><button class="supprimer" title="Supprimer" onclick="supprimerMesure(' + m.id + ')">&times;</button></td></tr>';
     });
     return html + '</table>';
   }
@@ -285,19 +286,26 @@
   });
 
   // ---------- Données ----------
+  // Chaque table est chargée séparément : une erreur sur les mesures n'empêche pas d'afficher les pesées.
   async function charger() {
-    const [resPesees, resMens] = await Promise.all([
-      sb.from('pesees').select('*').order('date', { ascending: false }),
-      sb.from('mensurations').select('*').order('date', { ascending: false })
-    ]);
-    if (resPesees.error || resMens.error) {
-      document.getElementById('dernieres').textContent = 'Erreur : ' + (resPesees.error || resMens.error).message;
-      return;
+    const resPesees = await sb.from('pesees').select('*').order('date', { ascending: false });
+    if (resPesees.error) {
+      document.getElementById('dernieres').textContent = 'Erreur pesées : ' + resPesees.error.message;
+      document.getElementById('tableauComplet').textContent = 'Erreur pesées : ' + resPesees.error.message;
+    } else {
+      pesees = resPesees.data;
+      afficherDernieres();
+      afficherHistoriquePesees();
     }
-    pesees = resPesees.data;
-    mensurations = resMens.data;
-    afficherDernieres();
-    afficherHistorique();
+
+    const resMesures = await sb.from(TABLE_MESURES).select('*').order('date', { ascending: false });
+    if (resMesures.error) {
+      document.getElementById('tableauMensures').textContent = 'Erreur mesures : ' + resMesures.error.message;
+    } else {
+      mesures = resMesures.data;
+      afficherHistoriqueMesures();
+    }
+
     if (ongletActif === 'graphique') dessiner();
   }
 
@@ -309,17 +317,20 @@
     document.getElementById('dernieres').innerHTML = tableauPesees(pesees.slice(0, 5));
   }
 
-  function afficherHistorique() {
+  function afficherHistoriquePesees() {
     if (!pesees.length) {
       document.getElementById('tableauComplet').textContent = 'Aucune pesée pour le moment.';
-    } else {
-      document.getElementById('tableauComplet').innerHTML = tableauPesees(pesees);
+      return;
     }
-    if (!mensurations.length) {
+    document.getElementById('tableauComplet').innerHTML = tableauPesees(pesees);
+  }
+
+  function afficherHistoriqueMesures() {
+    if (!mesures.length) {
       document.getElementById('tableauMensures').textContent = 'Aucune mesure pour le moment.';
-    } else {
-      document.getElementById('tableauMensures').innerHTML = tableauMensures(mensurations);
+      return;
     }
+    document.getElementById('tableauMensures').innerHTML = tableauMesures(mesures);
   }
 
   async function supprimerPesee(id) {
@@ -332,9 +343,9 @@
     }
   }
 
-  async function supprimerMensure(id) {
+  async function supprimerMesure(id) {
     if (!confirm('Supprimer ces mesures ?')) return;
-    const { error } = await sb.from('mensurations').delete().eq('id', id);
+    const { error } = await sb.from(TABLE_MESURES).delete().eq('id', id);
     if (error) {
       alert('Erreur : ' + error.message);
     } else {
@@ -380,7 +391,7 @@
       ligne[c] = valeur === '' ? null : parseFloat(valeur);
     });
 
-    const { error } = await sb.from('mensurations').upsert(ligne, { onConflict: 'user_id,date' });
+    const { error } = await sb.from(TABLE_MESURES).upsert(ligne, { onConflict: 'user_id,date' });
 
     if (error) {
       message.textContent = 'Erreur : ' + error.message;
