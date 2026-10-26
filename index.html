@@ -157,7 +157,7 @@
 
   .onglet { display: none; }
   .onglet.visible { display: block; }
-  #graph1, #graph2 { width: 100%; height: 300px; }
+  #graph1, #graph2 { width: 100%; height: 320px; }
   .titre-graphique { font-size: 13px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
 
   #connexion .carte { border-radius: 16px; }
@@ -169,6 +169,7 @@
     .grille-mesures { grid-template-columns: 1fr; }
     .jour .poids { font-size: 42px; }
     .photos-vue .nom-vue { font-size: 10px; }
+    #graph1, #graph2 { height: 340px; }
   }
 </style>
 </head>
@@ -879,6 +880,9 @@
     return dateLocale(dateStr) >= limite;
   }
 
+  // Options communes aux deux graphiques.
+  // Les graduations ont une police plus grande, un format à une décimale,
+  // et une marge fixe à gauche pour ne pas être tronquées sur téléphone.
   function optionsGraphique(titreY) {
     return {
       backgroundColor: 'transparent',
@@ -886,10 +890,21 @@
       colors: ['#6c8cff'],
       lineWidth: 2,
       pointSize: 5,
-      titleTextStyle: { color: '#9aa0b4' },
-      hAxis: { format: 'dd/MM', textStyle: { color: '#9aa0b4' }, gridlines: { color: '#2a2f3d' } },
-      vAxis: { title: titreY, titleTextStyle: { color: '#9aa0b4' }, textStyle: { color: '#9aa0b4' }, gridlines: { color: '#2a2f3d' }, baselineColor: '#2a2f3d' },
-      chartArea: { width: '85%', height: '70%' }
+      hAxis: {
+        format: 'dd/MM',
+        textStyle: { color: '#c3c8d8', fontSize: 12 },
+        gridlines: { color: '#2a2f3d' }
+      },
+      vAxis: {
+        title: titreY,
+        titleTextStyle: { color: '#9aa0b4', fontSize: 12, italic: false },
+        format: '0.0',
+        textStyle: { color: '#c3c8d8', fontSize: 12 },
+        gridlines: { color: '#2a2f3d', count: 5 },
+        minorGridlines: { count: 0 },
+        baselineColor: '#2a2f3d'
+      },
+      chartArea: { left: 58, top: 14, width: '88%', height: '70%' }
     };
   }
 
