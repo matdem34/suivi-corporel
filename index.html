@@ -447,6 +447,11 @@
     return x;
   }
 
+  // Date lisible en français, par exemple « 13 octobre 2026 »
+  function dateLongue(d) {
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
   function escapeHtml(s) {
     const div = document.createElement('div');
     div.textContent = s;
@@ -937,7 +942,7 @@
     return meilleur;
   }
 
-  // Dessine la zone bleue entre deux points et affiche la variation.
+  // Dessine la zone bleue entre deux points et affiche les dates et la variation.
   function majSelection(zoneId, a, b) {
     const s = etatGraphes[zoneId];
     if (!s || !s.chart) return;
@@ -962,14 +967,16 @@
     overlay.style.height = aire.height + 'px';
 
     if (lo === hi) {
-      resume.innerHTML = formaterDate(versIso(s.dates[lo])) + ' · ' + fr(s.valeurs[lo]) + ' ' + s.unite;
+      resume.innerHTML = dateLongue(s.dates[lo]) + ' · ' + fr(s.valeurs[lo]) + ' ' + s.unite;
     } else {
       const jours = Math.round((s.dates[hi] - s.dates[lo]) / 86400000);
       const delta = s.valeurs[hi] - s.valeurs[lo];
       const cls = delta < -0.05 ? 'baisse' : delta > 0.05 ? 'hausse' : 'stable';
       const signe = delta > 0 ? '+' : '';
-      resume.innerHTML = 'Période : ' + jours + ' jour' + (jours > 1 ? 's' : '')
-        + ' · <span class="' + cls + '">' + signe + fr(delta) + ' ' + s.unite + '</span>';
+      resume.innerHTML =
+        'Du ' + dateLongue(s.dates[lo]) + ' au ' + dateLongue(s.dates[hi])
+        + ' <span class="stable">(' + jours + ' jour' + (jours > 1 ? 's' : '') + ')</span>'
+        + '<br><span class="' + cls + '">' + signe + fr(delta) + ' ' + s.unite + '</span>';
     }
   }
 
