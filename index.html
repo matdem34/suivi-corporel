@@ -157,8 +157,12 @@
 
   .onglet { display: none; }
   .onglet.visible { display: block; }
-  #graph1, #graph2 { width: 100%; height: 320px; }
   .titre-graphique { font-size: 13px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+
+  /* Graphiques : sélection d'une période par glissement */
+  #graph1, #graph2 { width: 100%; height: 320px; position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .sel-overlay { position: absolute; background: rgba(108, 140, 255, 0.22); border-left: 1px solid var(--accent); border-right: 1px solid var(--accent); pointer-events: none; }
+  .indice { font-size: 12px; color: var(--texte-doux); margin-top: 6px; }
 
   #connexion .carte { border-radius: 16px; }
 
@@ -285,6 +289,7 @@
         </label>
         <div id="graph1"></div>
         <div id="resume1" class="message"></div>
+        <div class="indice">Appuyez sur un point puis glissez pour mesurer une période.</div>
       </div>
 
       <!-- Graphique secondaire : au choix -->
@@ -314,6 +319,7 @@
         </div>
         <div id="graph2"></div>
         <div id="resume2" class="message"></div>
+        <div class="indice">Appuyez sur un point puis glissez pour mesurer une période.</div>
       </div>
     </section>
 
@@ -404,6 +410,9 @@
   let photosRows = [];
   let googleChargé = false;
   let ongletActif = 'saisie';
+
+  // Données affichées dans chaque graphique, pour la sélection par glissement
+  const etatGraphes = { graph1: null, graph2: null };
 
   google.charts.load('current', { packages: ['corechart'] });
   google.charts.setOnLoadCallback(() => {
@@ -881,8 +890,6 @@
   }
 
   // Options communes aux deux graphiques.
-  // Les graduations ont une police plus grande, un format à une décimale,
-  // et une marge fixe à gauche pour ne pas être tronquées sur téléphone.
   function optionsGraphique(titreY) {
     return {
       backgroundColor: 'transparent',
@@ -913,6 +920,88 @@
     dessinerSecondaire();
   }
 
+  // ---------- Sélection d'une période par glissement ----------
+  // Trouve le point du graphique le plus proche de la position horizontale du doigt ou de la souris.
+  function indexPlusProche(zoneId, clientX) {
+    const s = etatGraphes[zoneId];
+    if (!s || !s.chart) return null;
+    const zone = document.getElementById(zoneId);
+    const x = clientX - zone.getBoundingClientRect().left;
+    const layout = s.chart.getChartLayoutInterface();
+    let meilleur = null;
+    let ecartMin = Infinity;
+    s.dates.forEach((d, i) => {
+      const ecart = Math.abs(layout.getXLocation(d) - x);
+      if (ecart < ecartMin) { ecartMin = ecart; meilleur = i; }
+    });
+    return meilleur;
+  }
+
+  // Dessine la zone bleue entre deux points et affiche la variation.
+  function majSelection(zoneId, a, b) {
+    const s = etatGraphes[zoneId];
+    if (!s || !s.chart) return;
+    const zone = document.getElementById(zoneId);
+    const resume = document.getElementById(s.resumeId);
+    const layout = s.chart.getChartLayoutInterface();
+    const aire = layout.getChartAreaBoundingBox();
+    const lo = Math.min(a, b);
+    const hi = Math.max(a, b);
+
+    let overlay = zone.querySelector('.sel-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'sel-overlay';
+      zone.appendChild(overlay);
+    }
+    const x1 = layout.getXLocation(s.dates[lo]);
+    const x2 = layout.getXLocation(s.dates[hi]);
+    overlay.style.left = Math.min(x1, x2) + 'px';
+    overlay.style.width = Math.max(Math.abs(x2 - x1), 2) + 'px';
+    overlay.style.top = aire.top + 'px';
+    overlay.style.height = aire.height + 'px';
+
+    if (lo === hi) {
+      resume.innerHTML = formaterDate(versIso(s.dates[lo])) + ' · ' + fr(s.valeurs[lo]) + ' ' + s.unite;
+    } else {
+      const jours = Math.round((s.dates[hi] - s.dates[lo]) / 86400000);
+      const delta = s.valeurs[hi] - s.valeurs[lo];
+      const cls = delta < -0.05 ? 'baisse' : delta > 0.05 ? 'hausse' : 'stable';
+      const signe = delta > 0 ? '+' : '';
+      resume.innerHTML = 'Période : ' + jours + ' jour' + (jours > 1 ? 's' : '')
+        + ' · <span class="' + cls + '">' + signe + fr(delta) + ' ' + s.unite + '</span>';
+    }
+  }
+
+  // Branche les événements de glissement sur la zone du graphique (une seule fois par zone)
+  function installerSelection(zoneId) {
+    const zone = document.getElementById(zoneId);
+    if (zone.dataset.selection) return;
+    zone.dataset.selection = '1';
+
+    let glissement = false;
+    let indexDebut = null;
+
+    zone.addEventListener('pointerdown', e => {
+      const idx = indexPlusProche(zoneId, e.clientX);
+      if (idx === null) return;
+      glissement = true;
+      indexDebut = idx;
+      zone.setPointerCapture(e.pointerId);
+      majSelection(zoneId, idx, idx);
+    });
+
+    zone.addEventListener('pointermove', e => {
+      if (!glissement) return;
+      const idx = indexPlusProche(zoneId, e.clientX);
+      if (idx !== null) majSelection(zoneId, indexDebut, idx);
+    });
+
+    const terminer = () => { glissement = false; };
+    zone.addEventListener('pointerup', terminer);
+    zone.addEventListener('pointercancel', terminer);
+  }
+
   // Graphique principal : poids quotidien
   function dessinerPrincipal() {
     if (!googleChargé) return;
@@ -925,6 +1014,7 @@
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (!triees.length) {
+      etatGraphes.graph1 = null;
       zone.textContent = 'Pas de pesée sur cette période.';
       zone.style.color = '#9aa0b4';
       resume.textContent = '';
@@ -938,7 +1028,18 @@
     table.addRows(triees.map(p => [dateLocale(p.date), Number(p.poids), infoBulle(p)]));
 
     zone.textContent = '';
-    new google.visualization.LineChart(zone).draw(table, optionsGraphique('kg'));
+    const chart = new google.visualization.LineChart(zone);
+    chart.draw(table, optionsGraphique('kg'));
+
+    etatGraphes.graph1 = {
+      chart: chart,
+      zoneId: 'graph1',
+      resumeId: 'resume1',
+      dates: triees.map(p => dateLocale(p.date)),
+      valeurs: triees.map(p => Number(p.poids)),
+      unite: 'kg'
+    };
+    installerSelection('graph1');
 
     const premier = Number(triees[0].poids);
     const dernier = Number(triees[triees.length - 1].poids);
@@ -984,6 +1085,7 @@
     }
 
     if (!lignes.length) {
+      etatGraphes.graph2 = null;
       zone.textContent = 'Pas de données sur cette période.';
       zone.style.color = '#9aa0b4';
       resume.textContent = '';
@@ -992,7 +1094,18 @@
 
     table.addRows(lignes);
     zone.textContent = '';
-    new google.visualization.LineChart(zone).draw(table, optionsGraphique(titreY));
+    const chart = new google.visualization.LineChart(zone);
+    chart.draw(table, optionsGraphique(titreY));
+
+    etatGraphes.graph2 = {
+      chart: chart,
+      zoneId: 'graph2',
+      resumeId: 'resume2',
+      dates: lignes.map(l => l[0]),
+      valeurs: lignes.map(l => l[1]),
+      unite: titreY
+    };
+    installerSelection('graph2');
 
     const premier = lignes[0][1];
     const dernier = lignes[lignes.length - 1][1];
