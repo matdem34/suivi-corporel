@@ -161,8 +161,18 @@
 
   /* Graphiques : sélection d'une période par glissement */
   #graph1, #graph2 { width: 100%; height: 320px; position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
-  .sel-overlay { position: absolute; background: rgba(108, 140, 255, 0.22); border-left: 1px solid var(--accent); border-right: 1px solid var(--accent); pointer-events: none; }
+  /* Deux traits pointillés, visibles uniquement pendant le glissement ou la comparaison */
+  .sel-ligne { position: absolute; width: 0; border-left: 2px dashed var(--accent); pointer-events: none; }
   .indice { font-size: 12px; color: var(--texte-doux); margin-top: 6px; }
+
+  /* Outil de comparaison de deux dates, sous chaque graphique */
+  .outil-cmp { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--bordure); }
+  .outil-cmp .titre-outil { font-size: 12px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: 1px; }
+  .outil-cmp label { margin-top: 8px; }
+  .btn-ligne { display: flex; gap: 8px; }
+  .btn-ligne > * { flex: 1; }
+  .btn-petit { padding: 8px 12px; font-size: 14px; background: var(--carte-claire); color: var(--texte); border: 1px solid var(--bordure); border-radius: 8px; cursor: pointer; margin-top: 10px; }
+  .btn-petit:hover { border-color: var(--accent); }
 
   #connexion .carte { border-radius: 16px; }
 
@@ -290,6 +300,19 @@
         <div id="graph1"></div>
         <div id="resume1" class="message"></div>
         <div class="indice">Appuyez sur un point puis glissez pour mesurer une période.</div>
+
+        <div class="outil-cmp">
+          <div class="titre-outil">Comparer deux dates</div>
+          <div class="ligne-deux">
+            <label>Du <input type="date" id="cmpDebut1"></label>
+            <label>Au <input type="date" id="cmpFin1"></label>
+          </div>
+          <div class="btn-ligne">
+            <button type="button" class="btn-petit" id="btnCmp1">Comparer</button>
+            <button type="button" class="btn-petit" id="btnEff1">Effacer</button>
+          </div>
+          <div id="msgCmp1" class="message"></div>
+        </div>
       </div>
 
       <!-- Graphique secondaire : au choix -->
@@ -320,6 +343,19 @@
         <div id="graph2"></div>
         <div id="resume2" class="message"></div>
         <div class="indice">Appuyez sur un point puis glissez pour mesurer une période.</div>
+
+        <div class="outil-cmp">
+          <div class="titre-outil">Comparer deux dates</div>
+          <div class="ligne-deux">
+            <label>Du <input type="date" id="cmpDebut2"></label>
+            <label>Au <input type="date" id="cmpFin2"></label>
+          </div>
+          <div class="btn-ligne">
+            <button type="button" class="btn-petit" id="btnCmp2">Comparer</button>
+            <button type="button" class="btn-petit" id="btnEff2">Effacer</button>
+          </div>
+          <div id="msgCmp2" class="message"></div>
+        </div>
       </div>
     </section>
 
@@ -403,6 +439,7 @@
   const APERCUS_PHOTO = { face: 'prevFace', profil: 'prevProfil', dos: 'prevDos' };
   const MAX_COMPARAISON = 5;
   const MIN_COMPARAISON = 2;
+  const SEUIL_GLISSEMENT = 8; // pixels à parcourir avant d'afficher la sélection
 
   let userId = null;
   let pesees = [];
@@ -942,8 +979,26 @@
     return meilleur;
   }
 
-  // Dessine la zone bleue entre deux points et affiche les dates et la variation.
-  function majSelection(zoneId, a, b) {
+  // Vrai seulement si le pointeur est à l'intérieur de la zone de tracé (pas sous l'axe horizontal)
+  function dansZoneTrace(zoneId, clientX, clientY) {
+    const s = etatGraphes[zoneId];
+    if (!s || !s.chart) return false;
+    const zone = document.getElementById(zoneId);
+    const rect = zone.getBoundingClientRect();
+    const aire = s.chart.getChartLayoutInterface().getChartAreaBoundingBox();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    return x >= aire.left && x <= aire.left + aire.width
+        && y >= aire.top && y <= aire.top + aire.height;
+  }
+
+  // Supprime les deux traits pointillés
+  function effacerTraits(zoneId) {
+    document.getElementById(zoneId).querySelectorAll('.sel-ligne').forEach(el => el.remove());
+  }
+
+  // Affiche les deux traits pointillés entre deux points et le texte de la période
+  function afficherSelection(zoneId, a, b) {
     const s = etatGraphes[zoneId];
     if (!s || !s.chart) return;
     const zone = document.getElementById(zoneId);
@@ -953,61 +1008,145 @@
     const lo = Math.min(a, b);
     const hi = Math.max(a, b);
 
-    let overlay = zone.querySelector('.sel-overlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.className = 'sel-overlay';
-      zone.appendChild(overlay);
-    }
+    effacerTraits(zoneId);
+
     const x1 = layout.getXLocation(s.dates[lo]);
     const x2 = layout.getXLocation(s.dates[hi]);
-    overlay.style.left = Math.min(x1, x2) + 'px';
-    overlay.style.width = Math.max(Math.abs(x2 - x1), 2) + 'px';
-    overlay.style.top = aire.top + 'px';
-    overlay.style.height = aire.height + 'px';
+    [x1, x2].forEach(x => {
+      const trait = document.createElement('div');
+      trait.className = 'sel-ligne';
+      trait.style.left = x + 'px';
+      trait.style.top = aire.top + 'px';
+      trait.style.height = aire.height + 'px';
+      zone.appendChild(trait);
+    });
 
-    if (lo === hi) {
-      resume.innerHTML = dateLongue(s.dates[lo]) + ' · ' + fr(s.valeurs[lo]) + ' ' + s.unite;
-    } else {
-      const jours = Math.round((s.dates[hi] - s.dates[lo]) / 86400000);
-      const delta = s.valeurs[hi] - s.valeurs[lo];
-      const cls = delta < -0.05 ? 'baisse' : delta > 0.05 ? 'hausse' : 'stable';
-      const signe = delta > 0 ? '+' : '';
-      resume.innerHTML =
-        'Du ' + dateLongue(s.dates[lo]) + ' au ' + dateLongue(s.dates[hi])
-        + ' <span class="stable">(' + jours + ' jour' + (jours > 1 ? 's' : '') + ')</span>'
-        + '<br><span class="' + cls + '">' + signe + fr(delta) + ' ' + s.unite + '</span>';
-    }
+    const jours = Math.round((s.dates[hi] - s.dates[lo]) / 86400000);
+    const delta = s.valeurs[hi] - s.valeurs[lo];
+    const cls = delta < -0.05 ? 'baisse' : delta > 0.05 ? 'hausse' : 'stable';
+    const signe = delta > 0 ? '+' : '';
+    resume.innerHTML =
+      'Du ' + dateLongue(s.dates[lo]) + ' au ' + dateLongue(s.dates[hi])
+      + ' <span class="stable">(' + jours + ' jour' + (jours > 1 ? 's' : '') + ')</span>'
+      + '<br><span class="' + cls + '">' + signe + fr(delta) + ' ' + s.unite + '</span>';
   }
 
-  // Branche les événements de glissement sur la zone du graphique (une seule fois par zone)
+  // Affiche simplement la date et la valeur d'un point touché
+  function afficherPoint(zoneId, idx) {
+    const s = etatGraphes[zoneId];
+    if (!s) return;
+    const resume = document.getElementById(s.resumeId);
+    resume.innerHTML = dateLongue(s.dates[idx]) + ' · ' + fr(s.valeurs[idx]) + ' ' + s.unite;
+  }
+
+  // Branche les événements sur la zone du graphique (une seule fois par zone)
   function installerSelection(zoneId) {
     const zone = document.getElementById(zoneId);
     if (zone.dataset.selection) return;
     zone.dataset.selection = '1';
 
-    let glissement = false;
+    let enCours = false;   // un doigt est posé sur le graphique
+    let glisse = false;    // le doigt a dépassé le seuil de glissement
     let indexDebut = null;
+    let xDebut = 0;
 
     zone.addEventListener('pointerdown', e => {
+      if (!dansZoneTrace(zoneId, e.clientX, e.clientY)) return;
       const idx = indexPlusProche(zoneId, e.clientX);
       if (idx === null) return;
-      glissement = true;
+      enCours = true;
+      glisse = false;
       indexDebut = idx;
+      xDebut = e.clientX;
       zone.setPointerCapture(e.pointerId);
-      majSelection(zoneId, idx, idx);
     });
 
     zone.addEventListener('pointermove', e => {
-      if (!glissement) return;
+      if (!enCours) return;
+      if (!glisse) {
+        if (Math.abs(e.clientX - xDebut) < SEUIL_GLISSEMENT) return;
+        glisse = true;
+      }
       const idx = indexPlusProche(zoneId, e.clientX);
-      if (idx !== null) majSelection(zoneId, indexDebut, idx);
+      if (idx !== null) afficherSelection(zoneId, indexDebut, idx);
     });
 
-    const terminer = () => { glissement = false; };
+    const terminer = () => {
+      if (!enCours) return;
+      const s = etatGraphes[zoneId];
+      if (glisse) {
+        // Fin du glissement : les traits disparaissent et le texte revient à l'affichage normal
+        effacerTraits(zoneId);
+        if (s) document.getElementById(s.resumeId).innerHTML = s.resumeDefaut;
+      } else {
+        // Simple appui : on affiche la date et la valeur du point
+        afficherPoint(zoneId, indexDebut);
+      }
+      enCours = false;
+      glisse = false;
+    };
+
     zone.addEventListener('pointerup', terminer);
     zone.addEventListener('pointercancel', terminer);
   }
+
+  // ---------- Comparaison de deux dates choisies dans un calendrier ----------
+  // Retourne l'indice du point dont la date est la plus proche de la date demandée
+  function indexDateProche(s, cible) {
+    let meilleur = null;
+    let ecartMin = Infinity;
+    s.dates.forEach((d, i) => {
+      const ecart = Math.abs(d.getTime() - cible.getTime());
+      if (ecart < ecartMin) { ecartMin = ecart; meilleur = i; }
+    });
+    return meilleur;
+  }
+
+  // Lit les deux dates saisies sous le graphique et affiche les traits correspondants
+  function comparerDatesChoisies(n) {
+    const zoneId = 'graph' + n;
+    const s = etatGraphes[zoneId];
+    const message = document.getElementById('msgCmp' + n);
+    const valDebut = document.getElementById('cmpDebut' + n).value;
+    const valFin = document.getElementById('cmpFin' + n).value;
+
+    if (!s) {
+      message.textContent = 'Aucune donnée affichée sur ce graphique.';
+      return;
+    }
+    if (!valDebut || !valFin) {
+      message.textContent = 'Choisissez une date de début et une date de fin.';
+      return;
+    }
+
+    const cibleDebut = dateLocale(valDebut);
+    const cibleFin = dateLocale(valFin);
+    const iDebut = indexDateProche(s, cibleDebut);
+    const iFin = indexDateProche(s, cibleFin);
+
+    // Si une date n'a pas de point, on indique que le point le plus proche est utilisé
+    const ajustees = s.dates[iDebut].getTime() !== cibleDebut.getTime()
+      || s.dates[iFin].getTime() !== cibleFin.getTime();
+    message.textContent = ajustees
+      ? 'Certaines dates n\'ont pas de point : le point le plus proche est utilisé.'
+      : '';
+
+    afficherSelection(zoneId, iDebut, iFin);
+  }
+
+  // Efface les traits de comparaison et rétablit le texte par défaut
+  function effacerComparaison(n) {
+    const zoneId = 'graph' + n;
+    const s = etatGraphes[zoneId];
+    effacerTraits(zoneId);
+    if (s) document.getElementById(s.resumeId).innerHTML = s.resumeDefaut;
+    document.getElementById('msgCmp' + n).textContent = '';
+  }
+
+  document.getElementById('btnCmp1').addEventListener('click', () => comparerDatesChoisies(1));
+  document.getElementById('btnCmp2').addEventListener('click', () => comparerDatesChoisies(2));
+  document.getElementById('btnEff1').addEventListener('click', () => effacerComparaison(1));
+  document.getElementById('btnEff2').addEventListener('click', () => effacerComparaison(2));
 
   // Graphique principal : poids quotidien
   function dessinerPrincipal() {
@@ -1038,21 +1177,24 @@
     const chart = new google.visualization.LineChart(zone);
     chart.draw(table, optionsGraphique('kg'));
 
+    const premier = Number(triees[0].poids);
+    const dernier = Number(triees[triees.length - 1].poids);
+    const diff = dernier - premier;
+    const texteDefaut = 'Départ : ' + fr(premier) + ' kg · Actuel : ' + fr(dernier) + ' kg · Variation : '
+      + (diff > 0 ? '+' : '') + fr(diff) + ' kg';
+
     etatGraphes.graph1 = {
       chart: chart,
       zoneId: 'graph1',
       resumeId: 'resume1',
       dates: triees.map(p => dateLocale(p.date)),
       valeurs: triees.map(p => Number(p.poids)),
-      unite: 'kg'
+      unite: 'kg',
+      resumeDefaut: texteDefaut
     };
     installerSelection('graph1');
 
-    const premier = Number(triees[0].poids);
-    const dernier = Number(triees[triees.length - 1].poids);
-    const diff = dernier - premier;
-    resume.textContent = 'Départ : ' + fr(premier) + ' kg · Actuel : ' + fr(dernier) + ' kg · Variation : '
-      + (diff > 0 ? '+' : '') + fr(diff) + ' kg';
+    resume.textContent = texteDefaut;
   }
 
   // Graphique secondaire : moyenne par semaine ou une mesure corporelle
@@ -1104,21 +1246,24 @@
     const chart = new google.visualization.LineChart(zone);
     chart.draw(table, optionsGraphique(titreY));
 
+    const premier = lignes[0][1];
+    const dernier = lignes[lignes.length - 1][1];
+    const diff = dernier - premier;
+    const texteDefaut = 'Départ : ' + fr(premier) + ' ' + titreY + ' · Actuel : ' + fr(dernier) + ' ' + titreY
+      + ' · Variation : ' + (diff > 0 ? '+' : '') + fr(diff) + ' ' + titreY;
+
     etatGraphes.graph2 = {
       chart: chart,
       zoneId: 'graph2',
       resumeId: 'resume2',
       dates: lignes.map(l => l[0]),
       valeurs: lignes.map(l => l[1]),
-      unite: titreY
+      unite: titreY,
+      resumeDefaut: texteDefaut
     };
     installerSelection('graph2');
 
-    const premier = lignes[0][1];
-    const dernier = lignes[lignes.length - 1][1];
-    const diff = dernier - premier;
-    resume.textContent = 'Départ : ' + fr(premier) + ' ' + titreY + ' · Actuel : ' + fr(dernier) + ' ' + titreY
-      + ' · Variation : ' + (diff > 0 ? '+' : '') + fr(diff) + ' ' + titreY;
+    resume.textContent = texteDefaut;
   }
 
   document.getElementById('periode1').addEventListener('change', dessinerPrincipal);
