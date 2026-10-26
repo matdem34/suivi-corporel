@@ -8,14 +8,14 @@
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 <style>
   :root {
-    --fond: #0f1117;
-    --carte: #181b26;
-    --carte-claire: #1f2330;
-    --bordure: #2a2f3d;
-    --texte: #e6e8ef;
-    --texte-doux: #9aa0b4;
-    --accent: #6c8cff;
-    --accent-fort: #4a6cf7;
+    --fond: #060709;
+    --carte: #0f1116;
+    --carte-claire: #171a22;
+    --bordure: #1d2029;
+    --texte: #eceef3;
+    --texte-doux: #7d8294;
+    --accent: #ff7a45;
+    --accent-fort: #ff5f3d;
     --hausse: #ff6b6b;
     --baisse: #4ade80;
   }
@@ -24,14 +24,10 @@
   body {
     font-family: Arial, Helvetica, sans-serif; margin: 0; color: var(--texte); overflow-x: hidden;
     background:
-      radial-gradient(circle at 15% 10%, rgba(108,140,255,.18), transparent 40%),
-      radial-gradient(circle at 85% 60%, rgba(168,85,247,.12), transparent 45%),
+      radial-gradient(circle at 12% 0%, rgba(255,122,69,.09), transparent 38%),
       var(--fond);
     background-attachment: fixed;
   }
-
-  header { background: var(--carte); color: var(--texte); padding: 14px 16px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bordure); }
-  header button { background: var(--carte-claire); color: var(--texte); border: 1px solid var(--bordure); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
 
   /* Barre de navigation en verre, en bas de l'écran */
   nav {
@@ -45,14 +41,11 @@
     gap: 4px;
     padding: 6px;
     border-radius: 28px;
-    background: rgba(40, 44, 62, 0.42);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-    backdrop-filter: blur(22px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow:
-      0 10px 30px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    background: rgba(24, 26, 34, 0.55);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   nav button {
     flex: 1;
@@ -72,76 +65,76 @@
   nav button svg { width: 22px; height: 22px; }
   nav button.actif {
     color: #ffffff;
-    background: rgba(255, 255, 255, 0.16);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 8px rgba(0, 0, 0, 0.25);
+    background: linear-gradient(135deg, rgba(255,122,69,.28), rgba(255,95,61,.18));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
     font-weight: bold;
   }
 
-  main { padding: 16px 16px 120px 16px; max-width: 960px; margin: auto; }
+  main { padding: 22px 16px 120px 16px; max-width: 960px; margin: auto; }
 
-  .carte { background: var(--carte); border: 1px solid var(--bordure); border-radius: 14px; padding: 18px; margin-bottom: 16px; min-width: 0; overflow: hidden; }
-  .carte h3 { margin: 0 0 12px 0; font-size: 16px; color: var(--texte); }
+  .carte { background: var(--carte); border: 1px solid var(--bordure); border-radius: 18px; padding: 16px; margin-bottom: 14px; min-width: 0; overflow: hidden; }
+  .carte h3 { margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--texte); letter-spacing: .2px; }
 
-  label { display: block; margin-top: 12px; font-size: 13px; color: var(--texte-doux); min-width: 0; }
-  input, select { display: block; width: 100%; min-width: 0; max-width: 100%; padding: 11px; margin-top: 6px; font-size: 16px; border: 1px solid var(--bordure); border-radius: 8px; background: var(--fond); color: var(--texte); color-scheme: dark; }
+  label { display: block; margin-top: 12px; font-size: 12px; color: var(--texte-doux); min-width: 0; }
+  input, select { display: block; width: 100%; min-width: 0; max-width: 100%; padding: 11px; margin-top: 6px; font-size: 16px; border: 1px solid var(--bordure); border-radius: 10px; background: #08090c; color: var(--texte); color-scheme: dark; }
   /* Safari (iPhone) impose une largeur minimale aux champs date : on la neutralise */
   input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 46px; text-align: left; }
   input[type="date"]::-webkit-date-and-time-value { text-align: left; }
   input[type="file"] { font-size: 14px; padding: 8px; }
   input:focus, select:focus { outline: none; border-color: var(--accent); }
 
-  button.principal { width: 100%; margin-top: 16px; padding: 13px; font-size: 16px; background: var(--accent-fort); color: white; border: none; border-radius: 8px; cursor: pointer; }
-  button.principal:hover { background: var(--accent); }
+  button.principal { width: 100%; margin-top: 14px; padding: 13px; font-size: 15px; font-weight: 600; background: linear-gradient(135deg, var(--accent), var(--accent-fort)); color: white; border: none; border-radius: 12px; cursor: pointer; }
+  button.principal:hover { filter: brightness(1.08); }
 
-  .message { margin-top: 10px; font-size: 14px; color: var(--texte-doux); }
-  .section-titre { margin: 18px 0 4px 0; font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+  .message { margin-top: 10px; font-size: 13px; color: var(--texte-doux); }
+  .section-titre { margin: 16px 0 4px 0; font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 1.2px; }
 
   /* Carte "pesée du jour" */
-  .jour { text-align: center; padding: 22px 18px; background: linear-gradient(135deg, #1e2a52 0%, #181b26 70%); border-color: #2f3a6b; }
-  .jour .titre { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--texte-doux); }
-  .jour .date { font-size: 15px; color: var(--accent); margin-top: 4px; }
-  .jour .poids { font-size: 48px; font-weight: bold; margin: 10px 0 4px 0; color: var(--texte); }
+  .jour { text-align: center; padding: 20px 18px; background: linear-gradient(150deg, #1d1410 0%, #0f1116 70%); border-color: #35221a; }
+  .jour .titre { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--texte-doux); }
+  .jour .date { font-size: 14px; color: var(--accent); margin-top: 4px; }
+  .jour .poids { font-size: 48px; font-weight: bold; margin: 8px 0 2px 0; color: var(--texte); }
   .jour .poids span { font-size: 20px; color: var(--texte-doux); font-weight: normal; }
   .jour .note { font-size: 14px; color: var(--texte-doux); font-style: italic; }
-  .jour .vide { font-size: 15px; color: var(--texte-doux); padding: 10px 0; }
+  .jour .vide { font-size: 14px; color: var(--texte-doux); padding: 10px 0; }
 
   /* Photos : trois cases alignées sur une ligne */
   .photos-ligne { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
   .case-wrap { text-align: center; min-width: 0; }
-  .case-photo { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 3 / 4; margin: 0; border: 1px dashed var(--bordure); border-radius: 10px; background: var(--fond); cursor: pointer; overflow: hidden; }
+  .case-photo { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 3 / 4; margin: 0; border: 1px dashed var(--bordure); border-radius: 12px; background: #08090c; cursor: pointer; overflow: hidden; }
   .case-photo:hover { border-color: var(--accent); }
   .case-photo input { display: none; }
   .case-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
   .case-photo img.visible { display: block; }
-  .case-photo .plus { font-size: 28px; color: var(--texte-doux); }
+  .case-photo .plus { font-size: 26px; color: var(--texte-doux); }
   .case-photo.rempli { border-style: solid; border-color: var(--accent); }
-  .case-titre { margin-top: 6px; font-size: 12px; color: var(--texte-doux); }
+  .case-titre { margin-top: 6px; font-size: 11px; color: var(--texte-doux); }
 
   /* Historique des photos : un bloc par date, trois photos côte à côte */
   .photos-liste { display: flex; flex-direction: column; gap: 18px; }
-  .photos-date { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
+  .photos-date { font-size: 13px; color: var(--accent); margin-bottom: 8px; }
   .photos-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .photos-vue { min-width: 0; text-align: center; }
-  .photos-vue img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; display: block; background: var(--fond); }
-  .photos-vue .vide-photo { width: 100%; aspect-ratio: 3 / 4; border: 1px dashed var(--bordure); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--texte-doux); font-size: 14px; }
-  .photos-vue .nom-vue { margin-top: 4px; font-size: 11px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: .5px; }
+  .photos-vue img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; display: block; background: #08090c; }
+  .photos-vue .vide-photo { width: 100%; aspect-ratio: 3 / 4; border: 1px dashed var(--bordure); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--texte-doux); font-size: 14px; }
+  .photos-vue .nom-vue { margin-top: 4px; font-size: 10px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: .6px; }
 
   .defile { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { padding: 9px 8px; border-bottom: 1px solid var(--bordure); text-align: left; vertical-align: middle; }
-  th { color: var(--texte-doux); font-weight: normal; font-size: 13px; }
-  .tableau-mesures th, .tableau-mesures td { font-size: 13px; padding: 7px 6px; white-space: nowrap; }
+  th { color: var(--texte-doux); font-weight: normal; font-size: 12px; }
+  .tableau-mesures th, .tableau-mesures td { font-size: 12px; padding: 7px 6px; white-space: nowrap; }
 
-  /* Choix des dates pour la comparaison */
+  /* Choix des dates pour la comparaison de photos */
   .choix-liste { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-  .choix-date { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 12px; border: 1px solid var(--bordure); border-radius: 8px; color: var(--texte); cursor: pointer; }
+  .choix-date { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 12px; border: 1px solid var(--bordure); border-radius: 10px; color: var(--texte); cursor: pointer; }
   .choix-date input { width: auto; margin: 0; }
 
   /* Affichage côte à côte */
   .comparaison { display: flex; gap: 10px; margin-top: 16px; overflow-x: auto; align-items: flex-start; }
   .cmp-item { flex: 1 1 0; min-width: 130px; margin: 0; text-align: center; }
-  .cmp-item img { width: 100%; height: auto; max-height: 62vh; object-fit: contain; border-radius: 8px; background: var(--fond); display: block; }
-  .cmp-item figcaption { margin-top: 6px; font-size: 13px; color: var(--accent); }
+  .cmp-item img { width: 100%; height: auto; max-height: 62vh; object-fit: contain; border-radius: 10px; background: #08090c; display: block; }
+  .cmp-item figcaption { margin-top: 6px; font-size: 12px; color: var(--accent); }
 
   .hausse { color: var(--hausse); font-weight: bold; }
   .baisse { color: var(--baisse); font-weight: bold; }
@@ -149,40 +142,38 @@
   .note { font-size: 12px; color: var(--texte-doux); font-style: italic; }
 
   .grille-mesures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .ligne-deux { display: flex; gap: 10px; }
-  .ligne-deux > * { flex: 1; min-width: 0; }
 
-  .supprimer { font-size: 14px; line-height: 1; padding: 2px 6px; background: none; color: #5d6378; border: none; border-radius: 4px; cursor: pointer; }
+  .supprimer { font-size: 14px; line-height: 1; padding: 2px 6px; background: none; color: #4a4f60; border: none; border-radius: 4px; cursor: pointer; }
   .supprimer:hover { color: var(--hausse); }
 
   .onglet { display: none; }
   .onglet.visible { display: block; }
-  .titre-graphique { font-size: 13px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .titre-graphique { font-size: 11px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; }
 
   /* Graphiques : sélection d'une période par glissement */
-  #graph1, #graph2 { width: 100%; height: 320px; position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #graph1, #graph2 { width: 100%; height: 300px; position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
   /* Deux traits pointillés, visibles uniquement pendant le glissement ou la comparaison */
   .sel-ligne { position: absolute; width: 0; border-left: 2px dashed var(--accent); pointer-events: none; }
-  .indice { font-size: 12px; color: var(--texte-doux); margin-top: 6px; }
+  .indice { font-size: 11px; color: var(--texte-doux); margin-top: 4px; }
 
-  /* Comparaison compacte de deux dates, sous le graphe du poids quotidien */
-  .cmp-compact { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
-  .cmp-compact input[type="date"] { flex: 1 1 0; min-width: 0; width: auto; min-height: 32px; height: 32px; margin: 0; padding: 4px 6px; font-size: 13px; border-radius: 6px; }
-  .cmp-compact button { flex: 0 0 32px; width: 32px; height: 32px; margin: 0; padding: 0; font-size: 16px; line-height: 1; border: 1px solid var(--bordure); border-radius: 8px; background: var(--carte-claire); color: var(--texte); cursor: pointer; }
-  .cmp-compact button:hover { border-color: var(--accent); }
-  .cmp-compact button.valider { color: var(--baisse); }
-  .cmp-compact button.effacer { color: var(--texte-doux); }
-  .cmp-msg { margin-top: 4px; font-size: 12px; color: var(--texte-doux); }
+  /* Barre compacte sous chaque graphe : une seule ligne */
+  .barre-graph { display: flex; align-items: center; gap: 6px; margin: 8px 0 0 0; flex-wrap: nowrap; }
+  .barre-graph select,
+  .barre-graph input[type="date"] { flex: 1 1 0; min-width: 0; width: auto; height: 32px; min-height: 32px; margin: 0; padding: 4px 6px; font-size: 12px; border-radius: 8px; }
+  .barre-graph button { flex: 0 0 28px; width: 28px; height: 28px; margin: 0; padding: 0; font-size: 15px; line-height: 1; border: 1px solid var(--bordure); border-radius: 8px; background: var(--carte-claire); color: var(--texte); cursor: pointer; }
+  .barre-graph button:hover { border-color: var(--accent); }
+  .barre-graph button.valider { color: var(--baisse); }
+  .barre-graph button.effacer { color: var(--texte-doux); }
+  .cmp-msg { margin-top: 4px; font-size: 11px; color: var(--texte-doux); }
 
-  #connexion .carte { border-radius: 16px; }
+  #connexion .carte { border-radius: 18px; }
 
-  /* Téléphone : une seule colonne pour les tours et les graphiques */
+  /* Téléphone : une seule colonne pour les tours */
   @media (max-width: 480px) {
-    main { padding: 12px 12px 120px 12px; }
-    .ligne-deux { flex-direction: column; }
+    main { padding: 18px 12px 120px 12px; }
     .grille-mesures { grid-template-columns: 1fr; }
     .jour .poids { font-size: 42px; }
-    .photos-vue .nom-vue { font-size: 10px; }
+    .photos-vue .nom-vue { font-size: 9px; }
     #graph1, #graph2 { height: 340px; }
   }
 </style>
@@ -200,11 +191,6 @@
 </div>
 
 <div id="appli" style="display:none">
-  <header>
-    Suivi corporel
-    <button id="deconnexion">Quitter</button>
-  </header>
-
   <main>
     <!-- Onglet 1 : Accueil -->
     <section id="saisie" class="onglet visible">
@@ -288,56 +274,52 @@
       <!-- Graphique principal : poids quotidien -->
       <div class="carte">
         <div class="titre-graphique">Poids quotidien</div>
-        <label>Période
-          <select id="periode1">
-            <option value="5j">5 derniers jours</option>
+        <div id="graph1"></div>
+        <div id="resume1" class="message"></div>
+
+        <!-- Une seule ligne : période, deux dates, validation, effacement -->
+        <div class="barre-graph">
+          <select id="periode1" aria-label="Période">
+            <option value="5j">5 j</option>
             <option value="1m">1 mois</option>
             <option value="6m">6 mois</option>
             <option value="1a">1 an</option>
             <option value="tout" selected>Tout</option>
           </select>
-        </label>
-        <div id="graph1"></div>
-        <div id="resume1" class="message"></div>
-        <div class="indice">Appuyez sur un point puis glissez pour mesurer une période.</div>
-
-        <!-- Comparaison compacte : deux dates, validation, effacement -->
-        <div class="cmp-compact">
           <input type="date" id="cmpDebut1" aria-label="Date de début">
           <input type="date" id="cmpFin1" aria-label="Date de fin">
           <button type="button" class="valider" id="btnCmp1" title="Comparer">✓</button>
           <button type="button" class="effacer" id="btnEff1" title="Effacer">×</button>
         </div>
         <div id="msgCmp1" class="cmp-msg"></div>
+        <div class="indice">Appuyez sur un point puis glissez pour mesurer une période.</div>
       </div>
 
       <!-- Graphique secondaire : au choix -->
       <div class="carte">
         <div class="titre-graphique">Graphique secondaire</div>
-        <div class="ligne-deux">
-          <label>Affichage
-            <select id="type2">
-              <option value="semaine">Poids : moyenne par semaine</option>
-              <option value="bras">Tour de bras</option>
-              <option value="cuisse">Tour de cuisse</option>
-              <option value="hanche">Tour de hanche</option>
-              <option value="taille">Tour de taille</option>
-              <option value="poitrine">Tour de poitrine</option>
-              <option value="epaules">Tour d'épaules</option>
-            </select>
-          </label>
-          <label>Période
-            <select id="periode2">
-              <option value="5j">5 derniers jours</option>
-              <option value="1m">1 mois</option>
-              <option value="6m">6 mois</option>
-              <option value="1a">1 an</option>
-              <option value="tout" selected>Tout</option>
-            </select>
-          </label>
-        </div>
         <div id="graph2"></div>
         <div id="resume2" class="message"></div>
+
+        <!-- Une seule ligne : type de graphe et période -->
+        <div class="barre-graph">
+          <select id="type2" aria-label="Affichage">
+            <option value="semaine">Poids moy./sem.</option>
+            <option value="bras">Bras</option>
+            <option value="cuisse">Cuisse</option>
+            <option value="hanche">Hanche</option>
+            <option value="taille">Taille</option>
+            <option value="poitrine">Poitrine</option>
+            <option value="epaules">Épaules</option>
+          </select>
+          <select id="periode2" aria-label="Période">
+            <option value="5j">5 j</option>
+            <option value="1m">1 mois</option>
+            <option value="6m">6 mois</option>
+            <option value="1a">1 an</option>
+            <option value="tout" selected>Tout</option>
+          </select>
+        </div>
         <div class="indice">Appuyez sur un point puis glissez pour mesurer une période.</div>
       </div>
     </section>
@@ -423,6 +405,7 @@
   const MAX_COMPARAISON = 5;
   const MIN_COMPARAISON = 2;
   const SEUIL_GLISSEMENT = 8; // pixels à parcourir avant d'afficher la sélection
+  const COULEUR_GRAPHE = '#ff7a45';
 
   let userId = null;
   let pesees = [];
@@ -561,11 +544,6 @@
       userId = data.user.id;
       montrerAppli();
     }
-  });
-
-  document.getElementById('deconnexion').addEventListener('click', async () => {
-    await sb.auth.signOut();
-    location.reload();
   });
 
   function montrerAppli() {
@@ -915,28 +893,29 @@
   }
 
   // Options communes aux deux graphiques.
+  // La zone de tracé occupe davantage de hauteur, pour réduire l'espace vide sous l'axe horizontal.
   function optionsGraphique(titreY) {
     return {
       backgroundColor: 'transparent',
       legend: 'none',
-      colors: ['#6c8cff'],
+      colors: [COULEUR_GRAPHE],
       lineWidth: 2,
       pointSize: 5,
       hAxis: {
         format: 'dd/MM',
-        textStyle: { color: '#c3c8d8', fontSize: 12 },
-        gridlines: { color: '#2a2f3d' }
+        textStyle: { color: '#b9bccb', fontSize: 12 },
+        gridlines: { color: '#1d2029' }
       },
       vAxis: {
         title: titreY,
-        titleTextStyle: { color: '#9aa0b4', fontSize: 12, italic: false },
+        titleTextStyle: { color: '#7d8294', fontSize: 12, italic: false },
         format: '0.0',
-        textStyle: { color: '#c3c8d8', fontSize: 12 },
-        gridlines: { color: '#2a2f3d', count: 5 },
+        textStyle: { color: '#b9bccb', fontSize: 12 },
+        gridlines: { color: '#1d2029', count: 5 },
         minorGridlines: { count: 0 },
-        baselineColor: '#2a2f3d'
+        baselineColor: '#1d2029'
       },
-      chartArea: { left: 58, top: 14, width: '88%', height: '70%' }
+      chartArea: { left: 58, top: 12, width: '88%', height: '82%' }
     };
   }
 
@@ -1141,7 +1120,7 @@
     if (!triees.length) {
       etatGraphes.graph1 = null;
       zone.textContent = 'Pas de pesée sur cette période.';
-      zone.style.color = '#9aa0b4';
+      zone.style.color = '#7d8294';
       resume.textContent = '';
       return;
     }
@@ -1215,7 +1194,7 @@
     if (!lignes.length) {
       etatGraphes.graph2 = null;
       zone.textContent = 'Pas de données sur cette période.';
-      zone.style.color = '#9aa0b4';
+      zone.style.color = '#7d8294';
       resume.textContent = '';
       return;
     }
