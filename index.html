@@ -165,14 +165,14 @@
   .sel-ligne { position: absolute; width: 0; border-left: 2px dashed var(--accent); pointer-events: none; }
   .indice { font-size: 12px; color: var(--texte-doux); margin-top: 6px; }
 
-  /* Outil de comparaison de deux dates, sous chaque graphique */
-  .outil-cmp { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--bordure); }
-  .outil-cmp .titre-outil { font-size: 12px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: 1px; }
-  .outil-cmp label { margin-top: 8px; }
-  .btn-ligne { display: flex; gap: 8px; }
-  .btn-ligne > * { flex: 1; }
-  .btn-petit { padding: 8px 12px; font-size: 14px; background: var(--carte-claire); color: var(--texte); border: 1px solid var(--bordure); border-radius: 8px; cursor: pointer; margin-top: 10px; }
-  .btn-petit:hover { border-color: var(--accent); }
+  /* Comparaison compacte de deux dates, sous le graphe du poids quotidien */
+  .cmp-compact { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+  .cmp-compact input[type="date"] { flex: 1 1 0; min-width: 0; width: auto; min-height: 32px; height: 32px; margin: 0; padding: 4px 6px; font-size: 13px; border-radius: 6px; }
+  .cmp-compact button { flex: 0 0 32px; width: 32px; height: 32px; margin: 0; padding: 0; font-size: 16px; line-height: 1; border: 1px solid var(--bordure); border-radius: 8px; background: var(--carte-claire); color: var(--texte); cursor: pointer; }
+  .cmp-compact button:hover { border-color: var(--accent); }
+  .cmp-compact button.valider { color: var(--baisse); }
+  .cmp-compact button.effacer { color: var(--texte-doux); }
+  .cmp-msg { margin-top: 4px; font-size: 12px; color: var(--texte-doux); }
 
   #connexion .carte { border-radius: 16px; }
 
@@ -301,18 +301,14 @@
         <div id="resume1" class="message"></div>
         <div class="indice">Appuyez sur un point puis glissez pour mesurer une période.</div>
 
-        <div class="outil-cmp">
-          <div class="titre-outil">Comparer deux dates</div>
-          <div class="ligne-deux">
-            <label>Du <input type="date" id="cmpDebut1"></label>
-            <label>Au <input type="date" id="cmpFin1"></label>
-          </div>
-          <div class="btn-ligne">
-            <button type="button" class="btn-petit" id="btnCmp1">Comparer</button>
-            <button type="button" class="btn-petit" id="btnEff1">Effacer</button>
-          </div>
-          <div id="msgCmp1" class="message"></div>
+        <!-- Comparaison compacte : deux dates, validation, effacement -->
+        <div class="cmp-compact">
+          <input type="date" id="cmpDebut1" aria-label="Date de début">
+          <input type="date" id="cmpFin1" aria-label="Date de fin">
+          <button type="button" class="valider" id="btnCmp1" title="Comparer">✓</button>
+          <button type="button" class="effacer" id="btnEff1" title="Effacer">×</button>
         </div>
+        <div id="msgCmp1" class="cmp-msg"></div>
       </div>
 
       <!-- Graphique secondaire : au choix -->
@@ -343,19 +339,6 @@
         <div id="graph2"></div>
         <div id="resume2" class="message"></div>
         <div class="indice">Appuyez sur un point puis glissez pour mesurer une période.</div>
-
-        <div class="outil-cmp">
-          <div class="titre-outil">Comparer deux dates</div>
-          <div class="ligne-deux">
-            <label>Du <input type="date" id="cmpDebut2"></label>
-            <label>Au <input type="date" id="cmpFin2"></label>
-          </div>
-          <div class="btn-ligne">
-            <button type="button" class="btn-petit" id="btnCmp2">Comparer</button>
-            <button type="button" class="btn-petit" id="btnEff2">Effacer</button>
-          </div>
-          <div id="msgCmp2" class="message"></div>
-        </div>
       </div>
     </section>
 
@@ -1090,7 +1073,7 @@
     zone.addEventListener('pointercancel', terminer);
   }
 
-  // ---------- Comparaison de deux dates choisies dans un calendrier ----------
+  // ---------- Comparaison de deux dates (graphique du poids quotidien uniquement) ----------
   // Retourne l'indice du point dont la date est la plus proche de la date demandée
   function indexDateProche(s, cible) {
     let meilleur = null;
@@ -1103,19 +1086,18 @@
   }
 
   // Lit les deux dates saisies sous le graphique et affiche les traits correspondants
-  function comparerDatesChoisies(n) {
-    const zoneId = 'graph' + n;
-    const s = etatGraphes[zoneId];
-    const message = document.getElementById('msgCmp' + n);
-    const valDebut = document.getElementById('cmpDebut' + n).value;
-    const valFin = document.getElementById('cmpFin' + n).value;
+  function comparerDatesChoisies() {
+    const s = etatGraphes.graph1;
+    const message = document.getElementById('msgCmp1');
+    const valDebut = document.getElementById('cmpDebut1').value;
+    const valFin = document.getElementById('cmpFin1').value;
 
     if (!s) {
       message.textContent = 'Aucune donnée affichée sur ce graphique.';
       return;
     }
     if (!valDebut || !valFin) {
-      message.textContent = 'Choisissez une date de début et une date de fin.';
+      message.textContent = 'Choisissez les deux dates.';
       return;
     }
 
@@ -1127,26 +1109,23 @@
     // Si une date n'a pas de point, on indique que le point le plus proche est utilisé
     const ajustees = s.dates[iDebut].getTime() !== cibleDebut.getTime()
       || s.dates[iFin].getTime() !== cibleFin.getTime();
-    message.textContent = ajustees
-      ? 'Certaines dates n\'ont pas de point : le point le plus proche est utilisé.'
-      : '';
+    message.textContent = ajustees ? 'Point le plus proche utilisé.' : '';
 
-    afficherSelection(zoneId, iDebut, iFin);
+    afficherSelection('graph1', iDebut, iFin);
   }
 
-  // Efface les traits de comparaison et rétablit le texte par défaut
-  function effacerComparaison(n) {
-    const zoneId = 'graph' + n;
-    const s = etatGraphes[zoneId];
-    effacerTraits(zoneId);
+  // Efface les traits de comparaison, vide les dates et rétablit le texte par défaut
+  function effacerComparaison() {
+    const s = etatGraphes.graph1;
+    effacerTraits('graph1');
     if (s) document.getElementById(s.resumeId).innerHTML = s.resumeDefaut;
-    document.getElementById('msgCmp' + n).textContent = '';
+    document.getElementById('msgCmp1').textContent = '';
+    document.getElementById('cmpDebut1').value = '';
+    document.getElementById('cmpFin1').value = '';
   }
 
-  document.getElementById('btnCmp1').addEventListener('click', () => comparerDatesChoisies(1));
-  document.getElementById('btnCmp2').addEventListener('click', () => comparerDatesChoisies(2));
-  document.getElementById('btnEff1').addEventListener('click', () => effacerComparaison(1));
-  document.getElementById('btnEff2').addEventListener('click', () => effacerComparaison(2));
+  document.getElementById('btnCmp1').addEventListener('click', comparerDatesChoisies);
+  document.getElementById('btnEff1').addEventListener('click', effacerComparaison);
 
   // Graphique principal : poids quotidien
   function dessinerPrincipal() {
@@ -1197,7 +1176,7 @@
     resume.textContent = texteDefaut;
   }
 
-  // Graphique secondaire : moyenne par semaine ou une mesure corporelle
+  // Graphique secondaire : moyenne par semaine ou une mesure corporelle (sans outil de comparaison)
   function dessinerSecondaire() {
     if (!googleChargé) return;
 
