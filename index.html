@@ -86,17 +86,6 @@
   .ligne-champs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .grille-mesures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 8px; }
 
-  /* Valeur de la dernière fois, en gris, cliquable pour la reprendre */
-  .dernier { display: block; margin-top: 3px; font-size: 11px; color: var(--texte-doux); cursor: pointer; }
-  .dernier:hover { color: var(--accent); }
-  .dernier:empty { display: none; }
-
-  /* Curseurs du poids : kilos entiers et chiffre après la virgule */
-  .curseurs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
-  .curseurs label { margin-top: 4px; font-size: 11px; }
-  .val-curseur { color: var(--texte); font-weight: 600; margin-left: 6px; }
-  input[type="range"] { padding: 0; margin-top: 4px; border: none; background: transparent; height: 24px; accent-color: var(--accent); }
-
   label { display: block; margin-top: 12px; font-size: 12px; color: var(--texte-doux); min-width: 0; }
   input, select { display: block; width: 100%; min-width: 0; max-width: 100%; padding: 11px; margin-top: 6px; font-size: 16px; border: 1px solid var(--bordure); border-radius: 10px; background: #08090c; color: var(--texte); color-scheme: dark; }
   /* Safari (iPhone) impose une largeur minimale aux champs date : on la neutralise */
@@ -104,7 +93,6 @@
   input[type="date"]::-webkit-date-and-time-value { text-align: left; }
   input[type="file"] { font-size: 14px; padding: 8px; }
   input:focus, select:focus { outline: none; border-color: var(--accent); }
-  input[type="range"]:focus { outline: none; }
 
   button.principal { width: 100%; margin-top: 14px; padding: 13px; font-size: 15px; font-weight: 600; background: linear-gradient(135deg, var(--accent), var(--accent-fort)); color: white; border: none; border-radius: 12px; cursor: pointer; }
   button.principal:hover { filter: brightness(1.08); }
@@ -227,18 +215,7 @@
         <form id="formPesee">
           <div class="ligne-champs">
             <label>Date <input type="date" id="datePesee" required></label>
-            <label>Poids (kg)
-              <input type="number" id="poids" step="0.1" inputmode="decimal" required>
-              <div class="dernier" id="hintPoids" data-cible="poids"></div>
-            </label>
-          </div>
-          <div class="curseurs">
-            <label>Entiers <span class="val-curseur" id="valEntier">70</span>
-              <input type="range" id="curEntier" min="40" max="180" step="1" value="70">
-            </label>
-            <label>Après la virgule <span class="val-curseur" id="valDecimal">0</span>
-              <input type="range" id="curDecimal" min="0" max="9" step="1" value="0">
-            </label>
+            <label>Poids (kg) <input type="number" id="poids" step="0.1" inputmode="decimal" required></label>
           </div>
           <label>Note <input type="text" id="note" placeholder="ex : restaurant hier soir"></label>
           <button type="submit" class="principal">Enregistrer la pesée</button>
@@ -253,12 +230,12 @@
           <label>Date <input type="date" id="dateMensure" required></label>
 
           <div class="grille-mesures">
-            <label>Bras (cm) <input type="number" id="m_bras" step="0.1" inputmode="decimal"><div class="dernier" id="hint_bras" data-cible="m_bras"></div></label>
-            <label>Cuisse (cm) <input type="number" id="m_cuisse" step="0.1" inputmode="decimal"><div class="dernier" id="hint_cuisse" data-cible="m_cuisse"></div></label>
-            <label>Hanche (cm) <input type="number" id="m_hanche" step="0.1" inputmode="decimal"><div class="dernier" id="hint_hanche" data-cible="m_hanche"></div></label>
-            <label>Taille (cm) <input type="number" id="m_taille" step="0.1" inputmode="decimal"><div class="dernier" id="hint_taille" data-cible="m_taille"></div></label>
-            <label>Poitrine (cm) <input type="number" id="m_poitrine" step="0.1" inputmode="decimal"><div class="dernier" id="hint_poitrine" data-cible="m_poitrine"></div></label>
-            <label>Épaules (cm) <input type="number" id="m_epaules" step="0.1" inputmode="decimal"><div class="dernier" id="hint_epaules" data-cible="m_epaules"></div></label>
+            <label>Bras (cm) <input type="number" id="m_bras" step="0.1" inputmode="decimal"></label>
+            <label>Cuisse (cm) <input type="number" id="m_cuisse" step="0.1" inputmode="decimal"></label>
+            <label>Hanche (cm) <input type="number" id="m_hanche" step="0.1" inputmode="decimal"></label>
+            <label>Taille (cm) <input type="number" id="m_taille" step="0.1" inputmode="decimal"></label>
+            <label>Poitrine (cm) <input type="number" id="m_poitrine" step="0.1" inputmode="decimal"></label>
+            <label>Épaules (cm) <input type="number" id="m_epaules" step="0.1" inputmode="decimal"></label>
           </div>
 
           <div class="section-titre">Photos</div>
@@ -554,88 +531,6 @@
     }
   }
 
-  // ---------- Curseurs du poids ----------
-  const poidsInput = document.getElementById('poids');
-  const curEntier = document.getElementById('curEntier');
-  const curDecimal = document.getElementById('curDecimal');
-
-  function majAffichageCurseurs() {
-    document.getElementById('valEntier').textContent = curEntier.value;
-    document.getElementById('valDecimal').textContent = curDecimal.value;
-  }
-
-  // Place les curseurs sur une valeur donnée (sans toucher au champ poids)
-  function setCurseurs(v) {
-    const r = Math.round(v * 10);
-    curEntier.value = Math.min(180, Math.max(40, Math.floor(r / 10)));
-    curDecimal.value = ((r % 10) + 10) % 10;
-    majAffichageCurseurs();
-  }
-
-  // Les curseurs modifient le champ poids
-  function syncDepuisCurseurs() {
-    const v = Number(curEntier.value) + Number(curDecimal.value) / 10;
-    poidsInput.value = v.toFixed(1);
-    majAffichageCurseurs();
-  }
-
-  curEntier.addEventListener('input', syncDepuisCurseurs);
-  curDecimal.addEventListener('input', syncDepuisCurseurs);
-
-  // Si l'utilisateur tape directement, les curseurs suivent
-  poidsInput.addEventListener('input', () => {
-    const v = parseFloat(poidsInput.value);
-    if (!isNaN(v)) setCurseurs(v);
-  });
-
-  // ---------- Valeurs de la dernière fois (cliquables) ----------
-  // Dernière pesée enregistrée (la liste est triée du plus récent au plus ancien)
-  function majHintPoids() {
-    const h = document.getElementById('hintPoids');
-    const dernier = pesees[0];
-    if (dernier) {
-      h.textContent = 'Dernier : ' + fr(dernier.poids) + ' kg · ' + formaterDate(dernier.date);
-      h.dataset.v = Number(dernier.poids).toFixed(1);
-      // Si le champ est vide, les curseurs se placent sur la dernière valeur connue
-      if (!poidsInput.value) setCurseurs(Number(dernier.poids));
-    } else {
-      h.textContent = '';
-      h.dataset.v = '';
-    }
-  }
-
-  // Dernière valeur connue pour chaque mesure
-  function majHintsMesures() {
-    MESURES.forEach(c => {
-      const h = document.getElementById('hint_' + c);
-      const ligne = mesures.find(m => m[c] !== null && m[c] !== undefined);
-      if (ligne) {
-        h.textContent = 'Dernier : ' + fr(ligne[c]) + ' · ' + formaterDate(ligne.date);
-        h.dataset.v = ligne[c];
-      } else {
-        h.textContent = '';
-        h.dataset.v = '';
-      }
-    });
-  }
-
-  // Un clic sur la valeur grise la reprend dans le champ correspondant
-  document.querySelectorAll('.dernier[data-cible]').forEach(h => {
-    h.addEventListener('click', e => {
-      // Évite que le clic active le champ à l'intérieur du libellé
-      e.preventDefault();
-      if (!h.dataset.v) return;
-      const cible = document.getElementById(h.dataset.cible);
-      if (cible.id === 'poids') {
-        const v = Number(h.dataset.v);
-        cible.value = v.toFixed(1);
-        setCurseurs(v);
-      } else {
-        cible.value = h.dataset.v;
-      }
-    });
-  });
-
   // ---------- Connexion ----------
   async function demarrer() {
     const { data } = await sb.auth.getSession();
@@ -695,7 +590,6 @@
       afficherAujourdhui();
       afficherDernieres();
       afficherHistoriquePesees();
-      majHintPoids();
     }
 
     const resMesures = await sb.from(TABLE_MESURES).select('*').order('date', { ascending: false });
@@ -704,7 +598,6 @@
     } else {
       mesures = resMesures.data;
       afficherHistoriqueMesures();
-      majHintsMesures();
     }
 
     await chargerPhotos();
@@ -765,7 +658,7 @@
     const { error } = await sb.from('pesees').upsert({
       user_id: userId,
       date: document.getElementById('datePesee').value,
-      poids: parseFloat(poidsInput.value),
+      poids: parseFloat(document.getElementById('poids').value),
       note: document.getElementById('note').value.trim() || null
     }, { onConflict: 'user_id,date' });
 
@@ -773,7 +666,7 @@
       message.textContent = 'Erreur : ' + error.message;
     } else {
       message.textContent = 'Pesée enregistrée.';
-      poidsInput.value = '';
+      document.getElementById('poids').value = '';
       document.getElementById('note').value = '';
       charger();
     }
