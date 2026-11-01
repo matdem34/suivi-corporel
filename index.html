@@ -135,6 +135,8 @@
   th, td { padding: 9px 8px; border-bottom: 1px solid var(--bordure); text-align: left; vertical-align: middle; }
   th { color: var(--texte-doux); font-weight: normal; font-size: 12px; }
   .tableau-mesures th, .tableau-mesures td { font-size: 12px; padding: 7px 6px; white-space: nowrap; }
+  /* Variation affichée sous chaque mesure de l'historique */
+  .var-mesure { font-size: 10px; line-height: 1.2; font-weight: bold; }
 
   /* Choix des dates pour la comparaison de photos */
   .choix-liste { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -492,14 +494,32 @@
     return html + '</table>';
   }
 
+  // Variation d'une mesure par rapport à la mesure précédente de la même partie du corps.
+  // La liste est triée du plus récent au plus ancien : la précédente est la première ligne plus ancienne qui a une valeur.
+  // Vert si la mesure diminue, rouge si elle augmente, gris si elle ne change pas.
+  function variationMesure(liste, i, c) {
+    const valeur = liste[i][c];
+    if (valeur === null || valeur === undefined) return '';
+    for (let j = i + 1; j < liste.length; j++) {
+      const precedente = liste[j][c];
+      if (precedente === null || precedente === undefined) continue;
+      const diff = Number(valeur) - Number(precedente);
+      if (Math.abs(diff) < 0.05) return '<div class="var-mesure stable">=</div>';
+      const cls = diff < 0 ? 'baisse' : 'hausse';
+      const signe = diff > 0 ? '+' : '−';
+      return '<div class="var-mesure ' + cls + '">' + signe + fr(Math.abs(diff)) + '</div>';
+    }
+    return '';
+  }
+
   function tableauMesures(liste) {
     let html = '<table class="tableau-mesures"><tr><th>Date</th>';
     MESURES.forEach(c => { html += '<th>' + NOMS_MESURES[c] + '</th>'; });
     html += '<th></th></tr>';
-    liste.forEach(m => {
+    liste.forEach((m, i) => {
       html += '<tr><td>' + formaterDate(m.date) + '</td>';
       MESURES.forEach(c => {
-        html += '<td>' + (m[c] !== null ? fr(m[c]) : '—') + '</td>';
+        html += '<td>' + (m[c] !== null ? fr(m[c]) : '—') + variationMesure(liste, i, c) + '</td>';
       });
       html += '<td><button class="supprimer" title="Supprimer" onclick="supprimerMesure(' + m.id + ')">&times;</button></td></tr>';
     });
