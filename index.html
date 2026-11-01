@@ -94,6 +94,8 @@
   input[type="date"]::-webkit-date-and-time-value { text-align: left; }
   input[type="file"] { font-size: 14px; padding: 8px; }
   input:focus, select:focus { outline: none; border-color: var(--accent); }
+  /* Valeur de la dernière fois, affichée en gris foncé dans les champs vides */
+  input::placeholder { color: #6b7080; opacity: 1; }
 
   button.principal { width: 100%; margin-top: 14px; padding: 13px; font-size: 15px; font-weight: 600; background: linear-gradient(135deg, var(--accent), var(--accent-fort)); color: white; border: none; border-radius: 12px; cursor: pointer; }
   button.principal:hover { filter: brightness(1.08); }
@@ -702,6 +704,31 @@
     }
   }
 
+  // ---------- Dernières valeurs affichées en gris dans les champs vides ----------
+  // Un champ vide affiche la dernière valeur enregistrée comme placeholder.
+  // Au clic, le texte disparaît pour laisser place à la saisie. Il revient si le champ reste vide.
+  function placeholderDernier(el, valeur, unite, date) {
+    el.dataset.ph = valeur === null || valeur === undefined
+      ? ''
+      : 'Dernier : ' + fr(valeur) + ' ' + unite + ' · ' + formaterDate(date);
+    if (document.activeElement !== el) el.placeholder = el.dataset.ph;
+  }
+
+  function majPlaceholders() {
+    const p = pesees.find(x => x.poids !== null && x.poids !== undefined);
+    placeholderDernier(document.getElementById('poids'), p ? p.poids : null, 'kg', p ? p.date : '');
+    MESURES.forEach(c => {
+      const m = mesures.find(x => x[c] !== null && x[c] !== undefined);
+      placeholderDernier(document.getElementById('m_' + c), m ? m[c] : null, 'cm', m ? m.date : '');
+    });
+  }
+
+  ['poids', ...MESURES.map(c => 'm_' + c)].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('focus', () => { el.placeholder = ''; });
+    el.addEventListener('blur', () => { if (!el.value) el.placeholder = el.dataset.ph || ''; });
+  });
+
   // ---------- Connexion ----------
   async function demarrer() {
     const { data } = await sb.auth.getSession();
@@ -772,6 +799,7 @@
       afficherHistoriqueMesures();
     }
 
+    majPlaceholders();
     afficherTableau();
 
     await chargerPhotos();
