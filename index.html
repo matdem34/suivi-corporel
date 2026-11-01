@@ -149,6 +149,7 @@
   .m-var { font-size: 10px; font-weight: 500; min-height: 13px; }
   .sem-moy { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--bordure); font-size: 12px; color: var(--texte-doux); text-align: center; }
   .sem-moy b { color: var(--texte); font-weight: 500; font-size: 14px; margin-left: 4px; }
+  .sem-moy .sem-var { margin-left: 6px; font-size: 12px; font-weight: 500; }
 
   .defile { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -633,17 +634,23 @@
     }
 
     const { liste, varPoids, varMes } = construireSemaines();
+
+    // Poids moyen de chaque semaine, dans le même ordre que la liste (la plus récente en premier)
+    const moyennes = liste.map(s => {
+      const ps = Object.values(s.jours);
+      if (!ps.length) return null;
+      return ps.reduce((a, p) => a + Number(p.poids), 0) / ps.length;
+    });
+
     let html = '';
 
-    liste.forEach(s => {
+    liste.forEach((s, idx) => {
       const lundi = dateLocale(s.k);
       const dimanche = new Date(lundi);
       dimanche.setDate(lundi.getDate() + 6);
 
       // Jours de la semaine : nom, date, poids et variation
       let jours = '<div class="sem-jours">';
-      let somme = 0;
-      let nb = 0;
       for (let j = 0; j < 7; j++) {
         const d = new Date(lundi);
         d.setDate(lundi.getDate() + j);
@@ -655,7 +662,6 @@
           + '<div class="j-poids">' + (p ? fr(p.poids) : '') + '</div>'
           + '<div class="j-var">' + (p ? htmlVariation(varPoids[p.id], '') : '') + '</div>'
           + '</div>';
-        if (p) { somme += Number(p.poids); nb++; }
       }
       jours += '</div>';
 
@@ -673,13 +679,17 @@
       });
       mes += '</div>';
 
-      const moyenne = nb ? fr(somme / nb) + ' kg' : '—';
+      // Poids moyen de la semaine et sa variation par rapport à la semaine précédente
+      const moy = moyennes[idx];
+      const moyPrecedente = idx + 1 < moyennes.length ? moyennes[idx + 1] : null;
+      const varMoy = moy !== null && moyPrecedente !== null ? moy - moyPrecedente : undefined;
+      const moyenne = moy !== null ? fr(moy) + ' kg' : '—';
 
       html += '<div class="semaine">'
         + '<div class="sem-titre">Semaine du ' + dateCourte(lundi) + ' au ' + dateCourte(dimanche) + '</div>'
         + jours
         + mes
-        + '<div class="sem-moy">Poids moyen<b>' + moyenne + '</b></div>'
+        + '<div class="sem-moy">Poids moyen<b>' + moyenne + '</b><span class="sem-var">' + htmlVariation(varMoy, ' kg') + '</span></div>'
         + '</div>';
     });
 
