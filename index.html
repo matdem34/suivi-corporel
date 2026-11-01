@@ -133,23 +133,24 @@
   .photos-vue .vide-photo { width: 100%; aspect-ratio: 3 / 4; border: 1px dashed var(--bordure); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--texte-doux); font-size: 14px; }
   .photos-vue .nom-vue { margin-top: 4px; font-size: 10px; color: var(--texte-doux); text-transform: uppercase; letter-spacing: .6px; }
 
-  /* Tableau récapitulatif par semaine */
+  /* Tableau récapitulatif par semaine : cases séparées, textes lisibles */
   .semaine { background: var(--carte); border: 1px solid var(--bordure); border-radius: 16px; padding: 12px; margin-bottom: 12px; min-width: 0; }
-  .sem-titre { font-size: 12px; color: var(--accent); margin-bottom: 10px; }
-  .sem-jours { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
-  .sem-jours .c { text-align: center; min-width: 0; padding: 4px 0; }
-  .j-nom { font-size: 11px; color: var(--texte-doux); }
-  .j-date { font-size: 11px; color: var(--texte-doux); margin-top: 2px; }
-  .j-poids { font-size: 13px; font-weight: 500; color: var(--texte); margin-top: 8px; }
-  .j-var { font-size: 10px; font-weight: 500; min-height: 13px; }
-  .sem-mesures { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--bordure); }
-  .sem-mesures .m { text-align: center; min-width: 0; }
-  .m-nom { font-size: 10px; color: var(--texte-doux); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .m-val { font-size: 12px; font-weight: 500; color: var(--texte); margin-top: 3px; min-height: 16px; }
-  .m-var { font-size: 10px; font-weight: 500; min-height: 13px; }
-  .sem-moy { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--bordure); font-size: 12px; color: var(--texte-doux); text-align: center; }
-  .sem-moy b { color: var(--texte); font-weight: 500; font-size: 14px; margin-left: 4px; }
-  .sem-moy .sem-var { margin-left: 6px; font-size: 12px; font-weight: 500; }
+  .sem-titre { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+  .sem-table, .sem-mes { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .sem-table th, .sem-table td, .sem-mes th, .sem-mes td { border: 1px solid var(--bordure); text-align: center; padding: 6px 2px; vertical-align: middle; }
+  .sem-table th { font-size: 13px; font-weight: 500; color: var(--texte-doux); background: #0b0d12; }
+  .sem-table tr.ligne-date td { font-size: 12px; color: var(--texte-doux); }
+  .sem-table td { font-size: 13px; color: var(--texte); }
+  .sem-table td.poids { font-size: 15px; font-weight: 600; }
+  .sem-table td .var, .sem-mes td .var { font-size: 12px; font-weight: 600; }
+  .sem-mes { margin-top: 8px; }
+  .sem-mes th { font-size: 12px; font-weight: 500; color: var(--texte-doux); background: #0b0d12; line-height: 1.2; }
+  .sem-mes td { font-size: 13px; color: var(--texte); }
+  .sem-mes td.poids { font-size: 15px; font-weight: 600; }
+  .sem-bilan { display: grid; grid-template-columns: 1fr 1fr; margin-top: 8px; border: 1px solid var(--bordure); border-radius: 10px; overflow: hidden; }
+  .sem-bilan > div { padding: 8px 6px; text-align: center; font-size: 12px; color: var(--texte-doux); }
+  .sem-bilan > div + div { border-left: 1px solid var(--bordure); }
+  .sem-bilan b { display: block; margin-top: 3px; font-size: 16px; font-weight: 600; color: var(--texte); }
 
   .defile { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -206,9 +207,11 @@
     .jour .poids { font-size: 42px; }
     .photos-vue .nom-vue { font-size: 9px; }
     #graph1, #graph2 { height: 340px; }
-    .j-poids { font-size: 12px; }
-    .m-nom { font-size: 9px; }
-    .m-val { font-size: 11px; }
+    .sem-table th { font-size: 12px; }
+    .sem-table td { font-size: 12px; }
+    .sem-table td.poids, .sem-mes td.poids { font-size: 14px; }
+    .sem-mes th { font-size: 11px; }
+    .sem-mes td { font-size: 12px; }
   }
 </style>
 </head>
@@ -634,62 +637,79 @@
     }
 
     const { liste, varPoids, varMes } = construireSemaines();
-
-    // Poids moyen de chaque semaine, dans le même ordre que la liste (la plus récente en premier)
-    const moyennes = liste.map(s => {
-      const ps = Object.values(s.jours);
-      if (!ps.length) return null;
-      return ps.reduce((a, p) => a + Number(p.poids), 0) / ps.length;
-    });
-
     let html = '';
 
-    liste.forEach((s, idx) => {
+    liste.forEach(s => {
       const lundi = dateLocale(s.k);
       const dimanche = new Date(lundi);
       dimanche.setDate(lundi.getDate() + 6);
 
-      // Jours de la semaine : nom, date, poids et variation
-      let jours = '<div class="sem-jours">';
+      // Une ligne par information : jour, date, poids, variation du jour
+      let enTetes = '';
+      let lignesDates = '';
+      let lignePoids = '';
+      let ligneVar = '';
+      const pesesSemaine = [];
+
       for (let j = 0; j < 7; j++) {
         const d = new Date(lundi);
         d.setDate(lundi.getDate() + j);
-        const iso = versIso(d);
-        const p = s.jours[iso];
-        jours += '<div class="c">'
-          + '<div class="j-nom">' + NOMS_JOURS[j] + '</div>'
-          + '<div class="j-date">' + d.getDate() + '</div>'
-          + '<div class="j-poids">' + (p ? fr(p.poids) : '') + '</div>'
-          + '<div class="j-var">' + (p ? htmlVariation(varPoids[p.id], '') : '') + '</div>'
-          + '</div>';
+        const p = s.jours[versIso(d)];
+        if (p) pesesSemaine.push(p);
+        enTetes += '<th>' + NOMS_JOURS[j] + '</th>';
+        lignesDates += '<td>' + d.getDate() + '</td>';
+        lignePoids += '<td class="poids">' + (p ? fr(p.poids) : '') + '</td>';
+        ligneVar += '<td>' + (p ? htmlVariation(varPoids[p.id], '') : '') + '</td>';
       }
-      jours += '</div>';
 
-      // Mesures : une colonne par partie du corps, case vide si non prise
+      const tableJours = '<table class="sem-table">'
+        + '<thead><tr>' + enTetes + '</tr></thead>'
+        + '<tbody>'
+        + '<tr class="ligne-date">' + lignesDates + '</tr>'
+        + '<tr>' + lignePoids + '</tr>'
+        + '<tr>' + ligneVar + '</tr>'
+        + '</tbody></table>';
+
+      // Mesures : une case par partie du corps, vide si non prise cette semaine
       const m = s.mesures;
-      let mes = '<div class="sem-mesures">';
+      let mEnTetes = '';
+      let mValeurs = '';
+      let mVariations = '';
       MESURES.forEach(c => {
-        const valeur = m && m[c] !== null && m[c] !== undefined ? fr(m[c]) : '';
+        const ok = m && m[c] !== null && m[c] !== undefined;
         const diff = m && varMes[m.id] ? varMes[m.id][c] : undefined;
-        mes += '<div class="m">'
-          + '<div class="m-nom">' + NOMS_MESURES[c] + '</div>'
-          + '<div class="m-val">' + valeur + '</div>'
-          + '<div class="m-var">' + (valeur ? htmlVariation(diff, '') : '') + '</div>'
-          + '</div>';
+        mEnTetes += '<th>' + NOMS_MESURES[c] + '</th>';
+        mValeurs += '<td class="poids">' + (ok ? fr(m[c]) : '') + '</td>';
+        mVariations += '<td>' + (ok ? htmlVariation(diff, '') : '') + '</td>';
       });
-      mes += '</div>';
 
-      // Poids moyen de la semaine et sa variation par rapport à la semaine précédente
-      const moy = moyennes[idx];
-      const moyPrecedente = idx + 1 < moyennes.length ? moyennes[idx + 1] : null;
-      const varMoy = moy !== null && moyPrecedente !== null ? moy - moyPrecedente : undefined;
-      const moyenne = moy !== null ? fr(moy) + ' kg' : '—';
+      const tableMesures = '<table class="sem-mes">'
+        + '<thead><tr>' + mEnTetes + '</tr></thead>'
+        + '<tbody><tr>' + mValeurs + '</tr><tr>' + mVariations + '</tr></tbody>'
+        + '</table>';
+
+      // Bilan : poids moyen à gauche, variation de la semaine à droite (lundi vers dimanche)
+      const moyenne = pesesSemaine.length
+        ? fr(pesesSemaine.reduce((a, p) => a + Number(p.poids), 0) / pesesSemaine.length) + ' kg'
+        : '—';
+
+      let varSemaine = '—';
+      if (pesesSemaine.length >= 2) {
+        const premier = pesesSemaine[0];
+        const dernier = pesesSemaine[pesesSemaine.length - 1];
+        varSemaine = htmlVariation(Number(dernier.poids) - Number(premier.poids), ' kg');
+      }
+
+      const bilan = '<div class="sem-bilan">'
+        + '<div>Poids moyen<b>' + moyenne + '</b></div>'
+        + '<div>Variation de la semaine<b>' + varSemaine + '</b></div>'
+        + '</div>';
 
       html += '<div class="semaine">'
         + '<div class="sem-titre">Semaine du ' + dateCourte(lundi) + ' au ' + dateCourte(dimanche) + '</div>'
-        + jours
-        + mes
-        + '<div class="sem-moy">Poids moyen<b>' + moyenne + '</b><span class="sem-var">' + htmlVariation(varMoy, ' kg') + '</span></div>'
+        + tableJours
+        + tableMesures
+        + bilan
         + '</div>';
     });
 
