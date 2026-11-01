@@ -707,19 +707,17 @@
   // ---------- Dernières valeurs affichées en gris dans les champs vides ----------
   // Un champ vide affiche la dernière valeur enregistrée comme placeholder.
   // Au clic, le texte disparaît pour laisser place à la saisie. Il revient si le champ reste vide.
-  function placeholderDernier(el, valeur, unite, date) {
-    el.dataset.ph = valeur === null || valeur === undefined
-      ? ''
-      : 'Dernier : ' + fr(valeur) + ' ' + unite + ' · ' + formaterDate(date);
+  function placeholderDernier(el, valeur) {
+    el.dataset.ph = valeur === null || valeur === undefined ? '' : fr(valeur);
     if (document.activeElement !== el) el.placeholder = el.dataset.ph;
   }
 
   function majPlaceholders() {
     const p = pesees.find(x => x.poids !== null && x.poids !== undefined);
-    placeholderDernier(document.getElementById('poids'), p ? p.poids : null, 'kg', p ? p.date : '');
+    placeholderDernier(document.getElementById('poids'), p ? p.poids : null);
     MESURES.forEach(c => {
       const m = mesures.find(x => x[c] !== null && x[c] !== undefined);
-      placeholderDernier(document.getElementById('m_' + c), m ? m[c] : null, 'cm', m ? m.date : '');
+      placeholderDernier(document.getElementById('m_' + c), m ? m[c] : null);
     });
   }
 
